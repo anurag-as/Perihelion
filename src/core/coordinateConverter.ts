@@ -4,16 +4,16 @@ import {
   J2000_MS,
   KM_PER_AU,
   MS_PER_DAY,
+  PLANET_DATA,
   SEC_PER_DAY,
 } from "./constants";
 
+const EARTH = PLANET_DATA.find((p) => p.name === "Earth")!;
+
 export function earthPositionAU(date: Date): [number, number, number] {
-  // Use the same mean-motion formula as updatePlanetPositions so the returned
-  // position matches the rendered Earth mesh exactly.
   const daysSinceJ2000 = (date.getTime() - J2000_MS) / MS_PER_DAY;
-  const L0 = 100.46; // Earth mean longitude at J2000 (degrees)
-  const n = 0.98563; // Earth mean motion (degrees/day)
-  const L = ((((L0 + n * daysSinceJ2000) % 360) + 360) % 360) * DEG2RAD;
+  const L =
+    ((((EARTH.L0 + EARTH.n * daysSinceJ2000) % 360) + 360) % 360) * DEG2RAD;
   const r = EARTH_SEMI_MAJOR_AXIS_AU;
   return [r * Math.cos(L), 0.0, r * Math.sin(L)];
 }

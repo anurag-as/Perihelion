@@ -9,34 +9,34 @@ import {
   type FetchStatus,
 } from "./core/dataFetcher";
 import { neoPosition } from "./core/coordinateConverter";
-import { MS_PER_DAY } from "./core/constants";
+import {
+  FETCH_LOOKAHEAD_DAYS,
+  MS_PER_DAY,
+  NEO_INCLINATION_MAX_DEG,
+  DEG2RAD,
+} from "./core/constants";
 import type { NeoData } from "./core/types";
+
+const TWO_PI = 2 * Math.PI;
+const INCLINATION_MAX_RAD = NEO_INCLINATION_MAX_DEG * DEG2RAD;
 
 function enrichPositions(neos: NeoData[]): NeoData[] {
   const now = Date.now();
-  const TWO_PI = 2 * Math.PI;
   const enriched: NeoData[] = [];
   for (let i = 0; i < neos.length; i++) {
     const neo = neos[i];
     const daysFromNow = (neo.approachDate.getTime() - now) / MS_PER_DAY;
 
-    // Derive stable azimuth and inclination from the NEO's numeric id.
-    // Two independent Knuth multiplicative hash passes give uncorrelated angles.
     const idNum = parseInt(neo.id, 10);
     const h1 = isNaN(idNum)
       ? (i * 2654435761) >>> 0
       : (idNum * 2654435761) >>> 0;
     const h2 = (h1 * 2246822519) >>> 0;
+    const h3 = (h2 * 2246822519) >>> 0;
 
     const azimuthRad = (h1 / 0x100000000) * TWO_PI;
-
-    // Map h2 to inclination magnitude biased toward low values (most NEOs < 30°).
-    // h3 determines sign so NEOs are distributed both above and below the ecliptic.
-    const h3 = (h2 * 2246822519) >>> 0;
-    const u = h2 / 0x100000000;
     const sign = h3 < 0x80000000 ? 1 : -1;
-    const inclinationRad =
-      sign * Math.asin(u) * (80 / 90) * (Math.PI / 180) * 90;
+    const inclinationRad = sign * Math.asin(h2 / 0x100000000) * INCLINATION_MAX_RAD;
 
     try {
       const position3d = neoPosition(
@@ -49,7 +49,7 @@ function enrichPositions(neos: NeoData[]): NeoData[] {
       );
       enriched.push({ ...neo, position3d });
     } catch {
-      // Skip NEOs whose coordinate conversion fails (invalid inputs).
+      // skip NEOs with invalid coordinate inputs
     }
   }
   return enriched;
@@ -71,7 +71,7 @@ export default function App() {
 
     async function loadData() {
       const today = new Date();
-      const end = new Date(today.getTime() + 30 * MS_PER_DAY);
+      const end = new Date(today.getTime() + FETCH_LOOKAHEAD_DAYS * MS_PER_DAY);
 
       let neos: NeoData[] = [];
 

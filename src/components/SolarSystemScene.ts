@@ -26,15 +26,26 @@ import {
   J2000_MS,
   KM_PER_AU,
   MS_PER_DAY,
-  NEO_POINT_SIZE,
+  NEO_ATLAS_CELL_PX,
+  NEO_ATLAS_COLS,
+  NEO_ATLAS_ROWS,
+  NEO_ATLAS_SEEDS,
+  NEO_ATLAS_ALPHA_DISCARD,
+  NEO_DIAMETER_LOG_MAX_KM,
+  NEO_DIAMETER_LOG_MIN_KM,
+  NEO_MIN_PIXEL_SIZE,
+  NEO_MAX_PIXEL_SIZE,
   ORBIT_DAMPING_FACTOR,
   ORBIT_MAX_DISTANCE,
   ORBIT_MIN_DISTANCE,
   ORBIT_RING_COLOUR_HEX,
   ORBIT_RING_MIN_TUBE,
   ORBIT_RING_OPACITY,
+  ORBIT_RING_PATH_SEGMENTS,
   ORBIT_RING_TUBE_RATIO,
+  ORBIT_RING_TUBE_SEGMENTS,
   PLANET_DATA,
+  PLANET_SPHERE_SEGMENTS,
   PROXIMITY_CLOSE_AU,
   PROXIMITY_MID_AU,
   PULSE_BRIGHTNESS_RANGE,
@@ -47,6 +58,8 @@ import {
   SUN_LIGHT_INTENSITY,
   SUN_COLOUR_HEX,
   SUN_RADIUS_AU,
+  SUN_SPHERE_SEGMENTS,
+  SUN_TEXTURE_URL,
 } from "../core/constants";
 
 function neoColour(neo: NeoData): readonly [number, number, number] {
@@ -57,8 +70,141 @@ function neoColour(neo: NeoData): readonly [number, number, number] {
   return COLOUR_FAR;
 }
 
-// Lazily created and cached — one texture for the lifetime of the module.
 let _diamondTexture: THREE.Texture | null = null;
+let _neoAtlasTexture: THREE.Texture | null = null;
+
+const ATLAS_VARIANTS = NEO_ATLAS_COLS * NEO_ATLAS_ROWS;
+
+function seededRand(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+function drawAsteroidCell(
+  ctx: CanvasRenderingContext2D,
+  ox: number,
+  oy: number,
+  size: number,
+  seed: number,
+): void {
+  const rand = seededRand(seed);
+  const cx = ox + size / 2;
+  const cy = oy + size / 2;
+  const baseR = size / 2 - 2;
+  const points = 8;
+  const angleStep = (Math.PI * 2) / points;
+
+  const verts: [number, number][] = [];
+  for (let i = 0; i < points; i++) {
+    const r = baseR * (0.82 + rand() * 0.18);
+    const angle = i * angleStep + (rand() - 0.5) * angleStep * 0.25;
+    verts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  for (let i = 0; i < points; i++) {
+    const curr = verts[i];
+    const next = verts[(i + 1) % points];
+    const mid: [number, number] = [
+      (curr[0] + next[0]) / 2,
+      (curr[1] + next[1]) / 2,
+    ];
+    if (i === 0) ctx.moveTo(mid[0], mid[1]);
+    else ctx.quadraticCurveTo(curr[0], curr[1], mid[0], mid[1]);
+  }
+  const closeMid: [number, number] = [
+    (verts[points - 1][0] + verts[0][0]) / 2,
+    (verts[points - 1][1] + verts[0][1]) / 2,
+  ];
+  ctx.quadraticCurveTo(verts[points - 1][0], verts[points - 1][1], closeMid[0], closeMid[1]);
+  ctx.closePath();
+  ctx.clip();
+
+  // Lit sphere gradient: bright off-centre highlight → dark edge
+  const grad = ctx.createRadialGradient(
+    cx - baseR * 0.25, cy - baseR * 0.25, 0,
+    cx, cy, baseR,
+  );
+  grad.addColorStop(0.0, "rgba(255,255,255,1)");
+  grad.addColorStop(0.25, "rgba(200,190,175,1)");
+  grad.addColorStop(0.65, "rgba(120,108,90,1)");
+  grad.addColorStop(1.0, "rgba(30,25,18,1)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(ox, oy, size, size);
+  ctx.restore();
+}
+
+function buildAtlas(): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = NEO_ATLAS_CELL_PX * NEO_ATLAS_COLS;
+  canvas.height = NEO_ATLAS_CELL_PX * NEO_ATLAS_ROWS;
+  const ctx = canvas.getContext("2d")!;
+  for (let v = 0; v < ATLAS_VARIANTS; v++) {
+    const col = v % NEO_ATLAS_COLS;
+    const row = Math.floor(v / NEO_ATLAS_COLS);
+    drawAsteroidCell(
+      ctx,
+      col * NEO_ATLAS_CELL_PX,
+      row * NEO_ATLAS_CELL_PX,
+      NEO_ATLAS_CELL_PX,
+      NEO_ATLAS_SEEDS[v],
+    );
+  }
+  return new THREE.CanvasTexture(canvas);
+}
+
+function getNeoAtlasTexture(): THREE.Texture {
+  if (!_neoAtlasTexture) _neoAtlasTexture = buildAtlas();
+  return _neoAtlasTexture;
+}
+
+const NEO_VERT = /* glsl */`
+  attribute float atlasIndex;
+  attribute vec3 color;
+  attribute float diameterKm;
+  varying vec2 vUv;
+  varying vec3 vColor;
+  uniform float minSize;
+  uniform float maxSize;
+
+  void main() {
+    vColor = color;
+    float idx = floor(atlasIndex + 0.5);
+    float col = mod(idx, ${NEO_ATLAS_COLS}.0);
+    float row = floor(idx / ${NEO_ATLAS_COLS}.0);
+    vUv = vec2(col, row);
+
+    float logD = clamp(
+      (log(diameterKm + ${NEO_DIAMETER_LOG_MIN_KM}) - log(${NEO_DIAMETER_LOG_MIN_KM})) /
+      (log(${NEO_DIAMETER_LOG_MAX_KM + NEO_DIAMETER_LOG_MIN_KM}) - log(${NEO_DIAMETER_LOG_MIN_KM})),
+      0.0, 1.0
+    );
+    gl_PointSize = minSize + logD * (maxSize - minSize);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const NEO_FRAG = /* glsl */`
+  uniform sampler2D atlas;
+  varying vec2 vUv;
+  varying vec3 vColor;
+
+  void main() {
+    float cellW = 1.0 / ${NEO_ATLAS_COLS}.0;
+    float cellH = 1.0 / ${NEO_ATLAS_ROWS}.0;
+    vec2 uv = vec2(
+      (vUv.x + gl_PointCoord.x) * cellW,
+      (vUv.y + (1.0 - gl_PointCoord.y)) * cellH
+    );
+    vec4 texel = texture2D(atlas, uv);
+    if (texel.a < ${NEO_ATLAS_ALPHA_DISCARD}) discard;
+    gl_FragColor = vec4(texel.rgb * vColor, texel.a);
+  }
+`;
 
 function getDiamondTexture(): THREE.Texture {
   if (_diamondTexture) return _diamondTexture;
@@ -92,6 +238,7 @@ export class SolarSystemScene {
   private planetMeshes: THREE.Mesh[] = [];
   private neoPoints: THREE.Points | null = null;
   private hazardPoints: THREE.Points | null = null;
+  private textureLoader = new THREE.TextureLoader();
 
   // Full NEO list as received; _displayNeos is the filtered subset actually in the GPU buffer.
   private _currentNeos: NeoData[] = [];
@@ -168,11 +315,16 @@ export class SolarSystemScene {
   }
 
   private addSun(): void {
-    const geo = new THREE.SphereGeometry(SUN_RADIUS_AU, 32, 32);
+    const geo = new THREE.SphereGeometry(SUN_RADIUS_AU, SUN_SPHERE_SEGMENTS, SUN_SPHERE_SEGMENTS);
     const mat = new THREE.MeshStandardMaterial({
       color: SUN_COLOUR_HEX,
       emissive: SUN_EMISSIVE_HEX,
       emissiveIntensity: 1,
+    });
+    this.textureLoader.load(SUN_TEXTURE_URL, (tex) => {
+      mat.map = tex;
+      mat.emissiveMap = tex;
+      mat.needsUpdate = true;
     });
     this.scene.add(new THREE.Mesh(geo, mat));
   }
@@ -186,6 +338,7 @@ export class SolarSystemScene {
         planet.radiusAU,
         planet.color,
         planet.size,
+        planet.textureUrl,
       );
       this.planetMeshes.push(mesh);
       this.planetGroup.add(mesh);
@@ -203,21 +356,31 @@ export class SolarSystemScene {
     radiusAU: number,
     color: string,
     size: number,
+    textureUrl: string,
   ): THREE.Mesh {
-    const geo = new THREE.SphereGeometry(size, 16, 16);
+    const geo = new THREE.SphereGeometry(size, PLANET_SPHERE_SEGMENTS, PLANET_SPHERE_SEGMENTS);
     const mat = new THREE.MeshStandardMaterial({ color });
+    this.textureLoader.load(textureUrl, (tex) => {
+      mat.map = tex;
+      mat.color.set(0xffffff);
+      mat.needsUpdate = true;
+    });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(radiusAU, 0, 0);
     return mesh;
   }
 
   private createOrbitRing(radiusAU: number): THREE.Mesh {
-    // TorusGeometry is in the XY plane by default; rotate to XZ (ecliptic plane).
     const tubeRadius = Math.max(
       radiusAU * ORBIT_RING_TUBE_RATIO,
       ORBIT_RING_MIN_TUBE,
     );
-    const geo = new THREE.TorusGeometry(radiusAU, tubeRadius, 4, 128);
+    const geo = new THREE.TorusGeometry(
+      radiusAU,
+      tubeRadius,
+      ORBIT_RING_TUBE_SEGMENTS,
+      ORBIT_RING_PATH_SEGMENTS,
+    );
     const mat = new THREE.MeshBasicMaterial({
       color: ORBIT_RING_COLOUR_HEX,
       transparent: true,
@@ -280,29 +443,42 @@ export class SolarSystemScene {
     const count = this._displayNeos.length;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
+    const atlasIndices = new Float32Array(count);
+    const diameters = new Float32Array(count);
 
     for (let i = 0; i < count; i++) {
-      const [x, y, z] = this._displayNeos[i].position3d;
+      const neo = this._displayNeos[i];
+      const [x, y, z] = neo.position3d;
       positions[i * 3] = x;
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = z;
-      const [r, g, b] = neoColour(this._displayNeos[i]);
+      const [r, g, b] = neoColour(neo);
       colors[i * 3] = r;
       colors[i * 3 + 1] = g;
       colors[i * 3 + 2] = b;
+      // Assign a variant deterministically from the NEO's id hash.
+      atlasIndices[i] = i % ATLAS_VARIANTS;
+      diameters[i] = neo.diameterKm;
     }
 
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    this.neoPoints = new THREE.Points(
-      geo,
-      new THREE.PointsMaterial({
-        size: NEO_POINT_SIZE,
-        vertexColors: true,
-        sizeAttenuation: true,
-      }),
-    );
+    geo.setAttribute("atlasIndex", new THREE.BufferAttribute(atlasIndices, 1));
+    geo.setAttribute("diameterKm", new THREE.BufferAttribute(diameters, 1));
+
+    const neoMat = new THREE.ShaderMaterial({
+      uniforms: {
+        atlas: { value: getNeoAtlasTexture() },
+        minSize: { value: NEO_MIN_PIXEL_SIZE },
+        maxSize: { value: NEO_MAX_PIXEL_SIZE },
+      },
+      vertexShader: NEO_VERT,
+      fragmentShader: NEO_FRAG,
+      transparent: true,
+      depthWrite: false,
+    });
+    this.neoPoints = new THREE.Points(geo, neoMat);
     this.scene.add(this.neoPoints);
 
     const hazardous = this._displayNeos.filter((n) => n.hazardous);

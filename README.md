@@ -62,3 +62,8 @@ Create a `.env` file in `perihelion/` to set these locally:
 ```
 VITE_NASA_API_KEY=your_key_here
 ```
+
+## Credits
+
+- Planet and Sun textures by [Solar System Scope](https://www.solarsystemscope.com/textures/) — licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Served via [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Solarsystemscope_texture_2k_earth_daymap.jpg).
+- NEO data from [NASA NeoWs](https://api.nasa.gov/) and [JPL Close Approach](https://ssd-api.jpl.nasa.gov/doc/cad.html) APIs.
