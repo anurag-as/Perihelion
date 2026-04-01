@@ -2,6 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as fc from "fast-check";
 import type { NeoData } from "../../src/core/types";
 
+function dist3d(
+  a: [number, number, number],
+  b: [number, number, number],
+): number {
+  const dx = a[0] - b[0];
+  const dy = a[1] - b[1];
+  const dz = a[2] - b[2];
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
 class MockWasmBonsaiIndex {
   private points: Array<{ x: number; y: number; payload: number }> = [];
   private entryCounter = 0;
@@ -262,18 +272,8 @@ describe("IndexManager", () => {
             const results = manager.rangeQuery(c, r);
             const resultIds = new Set(results.map((n) => n.id));
 
-            const euclidean = (
-              a: [number, number, number],
-              b: [number, number, number],
-            ) => {
-              const dx = a[0] - b[0];
-              const dy = a[1] - b[1];
-              const dz = a[2] - b[2];
-              return Math.sqrt(dx * dx + dy * dy + dz * dz);
-            };
-
             for (const neo of neos) {
-              if (euclidean(neo.position3d, c) <= r) {
+              if (dist3d(neo.position3d, c) <= r) {
                 if (!resultIds.has(neo.id)) return false;
               }
             }
@@ -327,17 +327,7 @@ describe("IndexManager", () => {
             ];
             const results = manager.rangeQuery(c, r);
 
-            const euclidean = (
-              a: [number, number, number],
-              b: [number, number, number],
-            ) => {
-              const dx = a[0] - b[0];
-              const dy = a[1] - b[1];
-              const dz = a[2] - b[2];
-              return Math.sqrt(dx * dx + dy * dy + dz * dz);
-            };
-
-            return results.every((neo) => euclidean(neo.position3d, c) <= r);
+            return results.every((neo) => dist3d(neo.position3d, c) <= r);
           },
         ),
       );
@@ -373,6 +363,54 @@ describe("IndexManager", () => {
         expect(neo).toBeDefined();
         expect(neos.map((n) => n.id)).toContain(neo.id);
       }
+    });
+
+    it("ordering: results are sorted by ascending 3D distance from query point", () => {
+      fc.assert(
+        fc.property(
+          fc.array(
+            fc.record({
+              x: fc.double({
+                min: -5,
+                max: 5,
+                noNaN: true,
+                noDefaultInfinity: true,
+              }),
+              y: fc.double({
+                min: -5,
+                max: 5,
+                noNaN: true,
+                noDefaultInfinity: true,
+              }),
+              z: fc.double({
+                min: -5,
+                max: 5,
+                noNaN: true,
+                noDefaultInfinity: true,
+              }),
+            }),
+            { minLength: 1, maxLength: 20 },
+          ),
+          fc.integer({ min: 1, max: 10 }),
+          (points, k) => {
+            const neos = points.map((p, i) =>
+              makeNeo({ id: String(i), position3d: [p.x, p.y, p.z] }),
+            );
+            manager.rebuild(neos);
+            const q: [number, number, number] = [0, 0, 0];
+            const results = manager.knnQuery(q, k);
+            for (let i = 1; i < results.length; i++) {
+              if (
+                dist3d(results[i - 1].position3d, q) >
+                dist3d(results[i].position3d, q)
+              ) {
+                return false;
+              }
+            }
+            return true;
+          },
+        ),
+      );
     });
   });
 });

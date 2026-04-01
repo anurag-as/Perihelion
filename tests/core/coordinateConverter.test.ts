@@ -41,16 +41,19 @@ describe("CoordinateConverter", () => {
           fc.float({ min: 1, max: 100, noNaN: true }), // velKmS
           fc.integer({ min: 1, max: 365 }), // days until approach
           fc.float({ min: 0, max: Math.fround(2 * Math.PI), noNaN: true }), // azimuthRad
-          fc.float({ min: Math.fround(-Math.PI / 2), max: Math.fround(Math.PI / 2), noNaN: true }), // inclinationRad
+          fc.float({
+            min: Math.fround(-Math.PI / 2),
+            max: Math.fround(Math.PI / 2),
+            noNaN: true,
+          }), // inclinationRad
           (missDistKm, velKmS, daysUntil, azimuthRad, inclinationRad) => {
             const approachDate = new Date(J2000_MS + daysUntil * 86_400_000);
-            const daysFromNow =
-              (approachDate.getTime() - Date.now()) / 86_400_000;
+            // daysFromNow=0 means place at closest approach
             const [nx, ny, nz] = neoPosition(
               approachDate,
               missDistKm,
               velKmS,
-              daysFromNow,
+              0,
               azimuthRad,
               inclinationRad,
             );

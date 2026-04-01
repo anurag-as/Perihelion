@@ -21,30 +21,25 @@ const TWO_PI = 2 * Math.PI;
 const INCLINATION_MAX_RAD = NEO_INCLINATION_MAX_DEG * DEG2RAD;
 
 function enrichPositions(neos: NeoData[]): NeoData[] {
-  const now = Date.now();
   const enriched: NeoData[] = [];
   for (let i = 0; i < neos.length; i++) {
     const neo = neos[i];
-    const daysFromNow = (neo.approachDate.getTime() - now) / MS_PER_DAY;
 
     const idNum = parseInt(neo.id, 10);
-    const h1 = isNaN(idNum)
-      ? (i * 2654435761) >>> 0
-      : (idNum * 2654435761) >>> 0;
-    const h2 = (h1 * 2246822519) >>> 0;
-    const h3 = (h2 * 2246822519) >>> 0;
+    const h1 = Math.imul(isNaN(idNum) ? i : idNum, 2654435761) >>> 0;
+    const h2 = Math.imul(h1, 2246822519) >>> 0;
+    const h3 = Math.imul(h2, 2246822519) >>> 0;
 
     const azimuthRad = (h1 / 0x100000000) * TWO_PI;
     const sign = h3 < 0x80000000 ? 1 : -1;
-    const inclinationRad =
-      sign * Math.asin(h2 / 0x100000000) * INCLINATION_MAX_RAD;
+    const inclinationRad = sign * (h2 / 0x100000000) * INCLINATION_MAX_RAD;
 
     try {
       const position3d = neoPosition(
         neo.approachDate,
         neo.missDistKm,
         neo.velocityKmS,
-        daysFromNow,
+        0,
         azimuthRad,
         inclinationRad,
       );

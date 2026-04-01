@@ -1,20 +1,34 @@
 import {
   DEG2RAD,
+  EARTH_ECCENTRICITY,
+  EARTH_MEAN_ANOMALY_DEG,
+  EARTH_MEAN_ANOMALY_RATE,
+  EARTH_MEAN_LONGITUDE_DEG,
+  EARTH_MEAN_LONGITUDE_RATE,
+  EARTH_EQUATION_OF_CENTRE_A,
+  EARTH_EQUATION_OF_CENTRE_B,
   EARTH_SEMI_MAJOR_AXIS_AU,
   J2000_MS,
+  JULIAN_CENTURIES,
   KM_PER_AU,
   MS_PER_DAY,
-  PLANET_DATA,
   SEC_PER_DAY,
 } from "./constants";
 
-const EARTH = PLANET_DATA.find((p) => p.name === "Earth")!;
-
 export function earthPositionAU(date: Date): [number, number, number] {
-  const daysSinceJ2000 = (date.getTime() - J2000_MS) / MS_PER_DAY;
+  const T = (date.getTime() - J2000_MS) / MS_PER_DAY / JULIAN_CENTURIES;
+  const M =
+    ((((EARTH_MEAN_ANOMALY_DEG + EARTH_MEAN_ANOMALY_RATE * T) % 360) + 360) %
+      360) *
+    DEG2RAD;
+  const C =
+    (EARTH_EQUATION_OF_CENTRE_A - EARTH_EQUATION_OF_CENTRE_B * T) * Math.sin(M);
   const L =
-    ((((EARTH.L0 + EARTH.n * daysSinceJ2000) % 360) + 360) % 360) * DEG2RAD;
-  const r = EARTH_SEMI_MAJOR_AXIS_AU;
+    ((((EARTH_MEAN_LONGITUDE_DEG + EARTH_MEAN_LONGITUDE_RATE * T + C) % 360) +
+      360) %
+      360) *
+    DEG2RAD;
+  const r = EARTH_SEMI_MAJOR_AXIS_AU - EARTH_ECCENTRICITY * Math.cos(M);
   return [r * Math.cos(L), 0.0, r * Math.sin(L)];
 }
 
@@ -46,8 +60,7 @@ export function neoPosition(
 
   const earthPos = earthPositionAU(approachDate);
   const missDistAU = missDistanceKm / KM_PER_AU;
-  const dt = daysFromNow - (approachDate.getTime() - Date.now()) / MS_PER_DAY;
-  const propagateAU = (velocityKmS * SEC_PER_DAY * dt) / KM_PER_AU;
+  const propagateAU = (velocityKmS * SEC_PER_DAY * daysFromNow) / KM_PER_AU;
   const offset = missDistAU + propagateAU;
 
   // Build offset direction from azimuth (in-plane rotation) and inclination (out-of-plane tilt).
@@ -67,7 +80,7 @@ export function neoPosition(
 
   return [
     earthPos[0] + offset * inPlaneX * cosI,
-    offset * sinI,
+    earthPos[1] + offset * sinI,
     earthPos[2] + offset * inPlaneZ * cosI,
   ];
 }

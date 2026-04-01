@@ -79,7 +79,7 @@ function seededRand(seed: number): () => number {
   let s = seed;
   return () => {
     s = (s * 1664525 + 1013904223) & 0xffffffff;
-    return (s >>> 0) / 0xffffffff;
+    return (s >>> 0) / 0x100000000;
   };
 }
 
@@ -192,8 +192,12 @@ const NEO_VERT = /* glsl */ `
       (log(${NEO_DIAMETER_LOG_MAX_KM + NEO_DIAMETER_LOG_MIN_KM}) - log(${NEO_DIAMETER_LOG_MIN_KM})),
       0.0, 1.0
     );
-    gl_PointSize = minSize + logD * (maxSize - minSize);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    float baseSize = minSize + logD * (maxSize - minSize);
+
+    // Scale point size with distance so NEOs grow when zoomed in.
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = baseSize * (projectionMatrix[1][1] / -mvPosition.z);
+    gl_Position = projectionMatrix * mvPosition;
   }
 `;
 
@@ -435,7 +439,7 @@ export class SolarSystemScene {
 
   private tickFlyTo(): void {
     if (!this.flyTarget || this.flyFramesLeft <= 0) return;
-    const alpha = (1 - this.flyFramesLeft / FLY_TO_FRAMES) * 0.1 + 0.02;
+    const alpha = (this.flyFramesLeft / FLY_TO_FRAMES) * 0.1 + 0.02;
     this.camera.position.lerp(this.flyTarget, alpha);
     if (this.flyControlsTarget) {
       this.controls.target.lerp(this.flyControlsTarget, alpha);

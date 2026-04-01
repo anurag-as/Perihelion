@@ -153,7 +153,7 @@ export async function fetchNeows(
   // Use date comparison rather than daysBetween to avoid rounding edge cases.
   const chunks: Array<Promise<NeowsResponse>> = [];
   let chunkStart = startDate;
-  while (chunkStart <= endDate) {
+  while (chunkStart.getTime() <= endDate.getTime()) {
     const chunkEnd = addDays(chunkStart, MAX_NEOWS_DAYS - 1);
     const actualEnd = chunkEnd < endDate ? chunkEnd : endDate;
     chunks.push(fetchNeowsChunk(chunkStart, actualEnd));

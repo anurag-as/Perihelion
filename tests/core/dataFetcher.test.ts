@@ -566,27 +566,24 @@ describe("Property: cache TTL expiry", () => {
     const cachedData = makeNeowsResponse(["2025-06-01"]);
 
     await fc.assert(
-      fc.asyncProperty(
-        fc.integer({ min: 0, max: 59 }),
-        async (minutes) => {
-          const cachedAt = Date.now() - minutes * 60_000;
-          const fetchMock = vi.fn().mockResolvedValue({
-            ok: true,
-            status: 200,
-            json: async () => cachedData,
-          } as Response);
+      fc.asyncProperty(fc.integer({ min: 0, max: 59 }), async (minutes) => {
+        const cachedAt = Date.now() - minutes * 60_000;
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => cachedData,
+        } as Response);
 
-          vi.stubGlobal("localStorage", makeLocalStorage(cachedAt, cachedData));
-          vi.stubGlobal("fetch", fetchMock);
+        vi.stubGlobal("localStorage", makeLocalStorage(cachedAt, cachedData));
+        vi.stubGlobal("fetch", fetchMock);
 
-          await fetchNeows(new Date("2025-06-01"), new Date("2025-06-07"));
+        await fetchNeows(new Date("2025-06-01"), new Date("2025-06-07"));
 
-          const callCount = fetchMock.mock.calls.length;
-          vi.unstubAllGlobals();
+        const callCount = fetchMock.mock.calls.length;
+        vi.unstubAllGlobals();
 
-          return callCount === 0;
-        },
-      ),
+        return callCount === 0;
+      }),
     );
   });
 });

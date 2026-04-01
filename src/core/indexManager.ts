@@ -87,7 +87,7 @@ export class IndexManager {
   // Atomically replace the index and store with a fresh build from objects.
   // Builds the new index first, then swaps — no queries see a partial state.
   rebuild(objects: NeoData[]): void {
-    if (!WasmBonsaiIndexCtor) {
+    if (!this.ready || !WasmBonsaiIndexCtor) {
       throw new Error("IndexManager not initialised — call init() first");
     }
 
@@ -140,6 +140,8 @@ export class IndexManager {
   }
 
   // kNN query: delegates to WASM, resolves NeoData, returns ordered by distance.
+  // Note: WASM index is 2D (XY only); Z is ignored for neighbour ranking.
+  // Results are re-sorted by true 3D distance after resolution.
   knnQuery(point: [number, number, number], k: number): NeoData[] {
     if (!this.index) return [];
 
@@ -151,6 +153,10 @@ export class IndexManager {
       const neo = this.payloadMap[payload];
       if (neo) results.push(neo);
     }
+    // Re-sort by true 3D distance to correct for Z being ignored in the WASM index.
+    results.sort(
+      (a, b) => dist3d(a.position3d, point) - dist3d(b.position3d, point),
+    );
     return results;
   }
 
