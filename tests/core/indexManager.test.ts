@@ -208,9 +208,6 @@ describe("IndexManager", () => {
     });
 
     it("resolves correct NeoData objects — not entry_id misread as payload", () => {
-      // Insert multiple NEOs so entry_id !== payload for most entries.
-      // If the code mistakenly reads raw[i] (entry_id) instead of raw[i+1]
-      // (payload), it would return wrong objects or undefined.
       const neos = makeNeos(5);
       manager.rebuild(neos);
       const results = manager.rangeQuery([0.02, 0.02, 0], 0.05);
@@ -218,6 +215,132 @@ describe("IndexManager", () => {
         expect(neo).toBeDefined();
         expect(neo.id).toBeDefined();
       }
+    });
+
+    /**
+     * For any inserted set and any sphere, no point inside the sphere is missing from results.
+     */
+    it("completeness: no point inside the sphere is missing from results", () => {
+      const coord = fc.double({
+        min: -5,
+        max: 5,
+        noNaN: true,
+        noDefaultInfinity: true,
+      });
+      const centreCoord = fc.double({
+        min: -3,
+        max: 3,
+        noNaN: true,
+        noDefaultInfinity: true,
+      });
+      const radius = fc.double({
+        min: 0.01,
+        max: 4,
+        noNaN: true,
+        noDefaultInfinity: true,
+      });
+
+      fc.assert(
+        fc.property(
+          fc.array(fc.record({ x: coord, y: coord, z: coord }), {
+            minLength: 0,
+            maxLength: 30,
+          }),
+          fc.record({ cx: centreCoord, cy: centreCoord, cz: centreCoord }),
+          radius,
+          (points, centre, r) => {
+            const neos = points.map((p, i) =>
+              makeNeo({ id: String(i), position3d: [p.x, p.y, p.z] }),
+            );
+            manager.rebuild(neos);
+
+            const c: [number, number, number] = [
+              centre.cx,
+              centre.cy,
+              centre.cz,
+            ];
+            const results = manager.rangeQuery(c, r);
+            const resultIds = new Set(results.map((n) => n.id));
+
+            const euclidean = (
+              a: [number, number, number],
+              b: [number, number, number],
+            ) => {
+              const dx = a[0] - b[0];
+              const dy = a[1] - b[1];
+              const dz = a[2] - b[2];
+              return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            };
+
+            for (const neo of neos) {
+              if (euclidean(neo.position3d, c) <= r) {
+                if (!resultIds.has(neo.id)) return false;
+              }
+            }
+            return true;
+          },
+        ),
+      );
+    });
+
+    /**
+     * Every returned point satisfies dist3d(position3d, centre) ≤ radiusAU.
+     */
+    it("soundness: every returned point is within the sphere radius", () => {
+      const coord = fc.double({
+        min: -5,
+        max: 5,
+        noNaN: true,
+        noDefaultInfinity: true,
+      });
+      const centreCoord = fc.double({
+        min: -3,
+        max: 3,
+        noNaN: true,
+        noDefaultInfinity: true,
+      });
+      const radius = fc.double({
+        min: 0.01,
+        max: 4,
+        noNaN: true,
+        noDefaultInfinity: true,
+      });
+
+      fc.assert(
+        fc.property(
+          fc.array(fc.record({ x: coord, y: coord, z: coord }), {
+            minLength: 0,
+            maxLength: 30,
+          }),
+          fc.record({ cx: centreCoord, cy: centreCoord, cz: centreCoord }),
+          radius,
+          (points, centre, r) => {
+            const neos = points.map((p, i) =>
+              makeNeo({ id: String(i), position3d: [p.x, p.y, p.z] }),
+            );
+            manager.rebuild(neos);
+
+            const c: [number, number, number] = [
+              centre.cx,
+              centre.cy,
+              centre.cz,
+            ];
+            const results = manager.rangeQuery(c, r);
+
+            const euclidean = (
+              a: [number, number, number],
+              b: [number, number, number],
+            ) => {
+              const dx = a[0] - b[0];
+              const dy = a[1] - b[1];
+              const dz = a[2] - b[2];
+              return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            };
+
+            return results.every((neo) => euclidean(neo.position3d, c) <= r);
+          },
+        ),
+      );
     });
   });
 
