@@ -359,7 +359,6 @@ export class SolarSystemScene {
   flyToNeo(neo: NeoData): void {
     const [nx, ny, nz] = neo.position3d;
     const neoPos = new THREE.Vector3(nx, ny, nz);
-    // Place camera FLY_TO_OFFSET_AU back along the camera→NEO direction.
     const dir = new THREE.Vector3()
       .subVectors(neoPos, this.camera.position)
       .normalize();

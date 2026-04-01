@@ -17,7 +17,8 @@ describe("CoordinateConverter", () => {
           const date = new Date(J2000_MS + dayOffset * 86_400_000);
           const [x, y, z] = earthPositionAU(date);
           const r = Math.sqrt(x * x + y * y + z * z);
-          return r >= 0.983 && r <= 1.017 && Math.abs(z) < 0.001;
+          // y is the out-of-ecliptic component (always 0); x and z are the in-plane components.
+          return r >= 0.983 && r <= 1.017 && Math.abs(y) < 0.001;
         }),
       );
     });
@@ -39,7 +40,9 @@ describe("CoordinateConverter", () => {
           fc.float({ min: 1_000, max: 1_000_000, noNaN: true }), // missDistKm
           fc.float({ min: 1, max: 100, noNaN: true }), // velKmS
           fc.integer({ min: 1, max: 365 }), // days until approach
-          (missDistKm, velKmS, daysUntil) => {
+          fc.float({ min: 0, max: Math.fround(2 * Math.PI), noNaN: true }), // azimuthRad
+          fc.float({ min: Math.fround(-Math.PI / 2), max: Math.fround(Math.PI / 2), noNaN: true }), // inclinationRad
+          (missDistKm, velKmS, daysUntil, azimuthRad, inclinationRad) => {
             const approachDate = new Date(J2000_MS + daysUntil * 86_400_000);
             const daysFromNow =
               (approachDate.getTime() - Date.now()) / 86_400_000;
@@ -48,6 +51,8 @@ describe("CoordinateConverter", () => {
               missDistKm,
               velKmS,
               daysFromNow,
+              azimuthRad,
+              inclinationRad,
             );
             const [ex, ey, ez] = earthPositionAU(approachDate);
             const dx = nx - ex,

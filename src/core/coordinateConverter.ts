@@ -1,40 +1,27 @@
 import {
   DEG2RAD,
-  EARTH_ECCENTRICITY,
-  EARTH_EQUATION_OF_CENTRE_A,
-  EARTH_EQUATION_OF_CENTRE_B,
-  EARTH_MEAN_ANOMALY_DEG,
-  EARTH_MEAN_ANOMALY_RATE,
-  EARTH_MEAN_LONGITUDE_DEG,
-  EARTH_MEAN_LONGITUDE_RATE,
   EARTH_SEMI_MAJOR_AXIS_AU,
-  JD_J2000,
-  JD_UNIX_EPOCH,
-  JULIAN_CENTURIES,
+  J2000_MS,
   KM_PER_AU,
   MS_PER_DAY,
   SEC_PER_DAY,
 } from "./constants";
 
-export function julianCenturies(date: Date): number {
-  const jd = date.getTime() / MS_PER_DAY + JD_UNIX_EPOCH;
-  return (jd - JD_J2000) / JULIAN_CENTURIES;
-}
-
 export function earthPositionAU(date: Date): [number, number, number] {
-  const T = julianCenturies(date);
-  const M = (EARTH_MEAN_ANOMALY_DEG + EARTH_MEAN_ANOMALY_RATE * T) * DEG2RAD;
-  const C =
-    (EARTH_EQUATION_OF_CENTRE_A - EARTH_EQUATION_OF_CENTRE_B * T) * Math.sin(M);
-  const L = EARTH_MEAN_LONGITUDE_DEG + EARTH_MEAN_LONGITUDE_RATE * T + C;
-  const r = EARTH_SEMI_MAJOR_AXIS_AU - EARTH_ECCENTRICITY * Math.cos(M);
-  return [r * Math.cos(L * DEG2RAD), r * Math.sin(L * DEG2RAD), 0.0];
+  // Use the same mean-motion formula as updatePlanetPositions so the returned
+  // position matches the rendered Earth mesh exactly.
+  const daysSinceJ2000 = (date.getTime() - J2000_MS) / MS_PER_DAY;
+  const L0 = 100.46; // Earth mean longitude at J2000 (degrees)
+  const n = 0.98563; // Earth mean motion (degrees/day)
+  const L = ((((L0 + n * daysSinceJ2000) % 360) + 360) % 360) * DEG2RAD;
+  const r = EARTH_SEMI_MAJOR_AXIS_AU;
+  return [r * Math.cos(L), 0.0, r * Math.sin(L)];
 }
 
 export function earthVelocityDirection(date: Date): [number, number, number] {
-  const [x, y] = earthPositionAU(date);
-  const mag = Math.sqrt(x * x + y * y);
-  return [-y / mag, x / mag, 0.0];
+  const [x, , z] = earthPositionAU(date);
+  const mag = Math.sqrt(x * x + z * z);
+  return [-z / mag, 0.0, x / mag];
 }
 
 export function neoPosition(
@@ -42,6 +29,8 @@ export function neoPosition(
   missDistanceKm: number,
   velocityKmS: number,
   daysFromNow: number,
+  azimuthRad = 0,
+  inclinationRad = 0,
 ): [number, number, number] {
   if (
     missDistanceKm <= 0 ||
@@ -59,11 +48,28 @@ export function neoPosition(
   const missDistAU = missDistanceKm / KM_PER_AU;
   const dt = daysFromNow - (approachDate.getTime() - Date.now()) / MS_PER_DAY;
   const propagateAU = (velocityKmS * SEC_PER_DAY * dt) / KM_PER_AU;
-
-  // cross([vx, vy, 0], [0, 0, 1]) = [vy, -vx, 0]; unit length since earthVelocityDirection is normalised
-  const [vx, vy] = earthVelocityDirection(approachDate);
   const offset = missDistAU + propagateAU;
-  return [earthPos[0] + vy * offset, earthPos[1] + -vx * offset, earthPos[2]];
+
+  // Build offset direction from azimuth (in-plane rotation) and inclination (out-of-plane tilt).
+  // radial = Sun→Earth unit vector in ecliptic XZ (Three.js convention).
+  const [ex, , ez] = earthPos;
+  const earthMag = Math.sqrt(ex * ex + ez * ez);
+  const radialX = ex / earthMag;
+  const radialZ = ez / earthMag;
+
+  // Rotate radial by azimuth in the ecliptic XZ plane, then tilt by inclination toward Y.
+  const inPlaneX =
+    Math.cos(azimuthRad) * radialX - Math.sin(azimuthRad) * radialZ;
+  const inPlaneZ =
+    Math.cos(azimuthRad) * radialZ + Math.sin(azimuthRad) * radialX;
+  const cosI = Math.cos(inclinationRad);
+  const sinI = Math.sin(inclinationRad);
+
+  return [
+    earthPos[0] + offset * inPlaneX * cosI,
+    offset * sinI,
+    earthPos[2] + offset * inPlaneZ * cosI,
+  ];
 }
 
 export function radiantToXYZ(

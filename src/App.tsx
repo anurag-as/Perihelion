@@ -14,15 +14,38 @@ import type { NeoData } from "./core/types";
 
 function enrichPositions(neos: NeoData[]): NeoData[] {
   const now = Date.now();
+  const TWO_PI = 2 * Math.PI;
   const enriched: NeoData[] = [];
-  for (const neo of neos) {
+  for (let i = 0; i < neos.length; i++) {
+    const neo = neos[i];
     const daysFromNow = (neo.approachDate.getTime() - now) / MS_PER_DAY;
+
+    // Derive stable azimuth and inclination from the NEO's numeric id.
+    // Two independent Knuth multiplicative hash passes give uncorrelated angles.
+    const idNum = parseInt(neo.id, 10);
+    const h1 = isNaN(idNum)
+      ? (i * 2654435761) >>> 0
+      : (idNum * 2654435761) >>> 0;
+    const h2 = (h1 * 2246822519) >>> 0;
+
+    const azimuthRad = (h1 / 0x100000000) * TWO_PI;
+
+    // Map h2 to inclination magnitude biased toward low values (most NEOs < 30°).
+    // h3 determines sign so NEOs are distributed both above and below the ecliptic.
+    const h3 = (h2 * 2246822519) >>> 0;
+    const u = h2 / 0x100000000;
+    const sign = h3 < 0x80000000 ? 1 : -1;
+    const inclinationRad =
+      sign * Math.asin(u) * (80 / 90) * (Math.PI / 180) * 90;
+
     try {
       const position3d = neoPosition(
         neo.approachDate,
         neo.missDistKm,
         neo.velocityKmS,
         daysFromNow,
+        azimuthRad,
+        inclinationRad,
       );
       enriched.push({ ...neo, position3d });
     } catch {
