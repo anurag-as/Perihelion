@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import * as fc from "fast-check";
-import { createDataStore, type NeoData } from "../../src/core/dataStore";
+import { createDataStore } from "../../src/core/dataStore";
+import type { NeoData } from "../../src/core/types";
 
 function makeNeo(overrides: Partial<NeoData> = {}): NeoData {
   return {

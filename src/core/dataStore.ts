@@ -1,4 +1,3 @@
-export type { NeoData } from "./types";
 import type { NeoData } from "./types";
 
 export interface DataStore {

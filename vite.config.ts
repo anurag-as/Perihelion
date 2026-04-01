@@ -6,6 +6,15 @@ import topLevelAwait from "vite-plugin-top-level-await";
 
 export default defineConfig({
   plugins: [react(), wasm(), topLevelAwait()],
+  server: {
+    proxy: {
+      "/api/jpl": {
+        target: "https://ssd-api.jpl.nasa.gov",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/jpl/, ""),
+      },
+    },
+  },
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
