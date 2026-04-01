@@ -1,2 +1,64 @@
-# Perihelion
-Perihelion is a browser-based near-Earth object (NEO) tracker that visualises asteroids, comets, and meteor shower radiants in real-time 3D.
+# Perihelion — Near-Earth Object Tracker
+
+A browser-based 3D visualiser for asteroids, comets, and meteor shower radiants. Fetches live data from NASA's NeoWs and JPL Close Approach APIs, indexes objects spatially using [Bonsai](https://github.com/bonsai-index) compiled to WASM, and renders an interactive solar system scene with Three.js — entirely client-side, no server required.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18+
+- [Rust](https://rustup.rs/) + [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
+
+## Setup
+
+```bash
+cd perihelion
+npm install
+```
+
+## Development
+
+```bash
+npm run dev
+```
+
+Starts the Vite dev server at `http://localhost:5173`.
+
+The WASM spatial index is optional for initial development — the scene renders from the bundled snapshot without it. To build the WASM module:
+
+```bash
+cd perihelion/src/wasm
+wasm-pack build --target web --out-dir ../wasm/pkg
+```
+
+Or from the `perihelion/` root:
+
+```bash
+npm run wasm:build
+```
+
+## Testing
+
+```bash
+npm test
+```
+
+Runs Vitest in single-pass mode (no watch).
+
+## Build
+
+```bash
+npm run build
+```
+
+Outputs a fully static site to `perihelion/dist/`. Deployable to GitHub Pages or any static host.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_NASA_API_KEY` | `DEMO_KEY` | NASA API key for NeoWs and JPL CAD requests |
+
+Create a `.env` file in `perihelion/` to set these locally:
+
+```
+VITE_NASA_API_KEY=your_key_here
+```
