@@ -142,12 +142,13 @@ export async function fetchNeows(
     return fetchNeowsChunk(startDate, endDate);
   }
 
-  // Split into 7-day inclusive chunks and merge near_earth_objects
+  // Split into 7-day inclusive chunks and merge near_earth_objects.
+  // Use date comparison rather than daysBetween to avoid rounding edge cases.
   const chunks: Array<Promise<NeowsResponse>> = [];
   let chunkStart = startDate;
-  while (daysBetween(chunkStart, endDate) > 0) {
+  while (chunkStart <= endDate) {
     const chunkEnd = addDays(chunkStart, MAX_NEOWS_DAYS - 1);
-    const actualEnd = chunkEnd > endDate ? endDate : chunkEnd;
+    const actualEnd = chunkEnd < endDate ? chunkEnd : endDate;
     chunks.push(fetchNeowsChunk(chunkStart, actualEnd));
     chunkStart = addDays(actualEnd, 1);
   }

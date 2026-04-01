@@ -6,6 +6,11 @@ import topLevelAwait from "vite-plugin-top-level-await";
 
 export default defineConfig({
   plugins: [react(), wasm(), topLevelAwait()],
+  build: {
+    rollupOptions: {
+      external: ["three", /^three\/.*/],
+    },
+  },
   server: {
     proxy: {
       "/api/jpl": {
