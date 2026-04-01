@@ -120,14 +120,23 @@ function drawAsteroidCell(
     (verts[points - 1][0] + verts[0][0]) / 2,
     (verts[points - 1][1] + verts[0][1]) / 2,
   ];
-  ctx.quadraticCurveTo(verts[points - 1][0], verts[points - 1][1], closeMid[0], closeMid[1]);
+  ctx.quadraticCurveTo(
+    verts[points - 1][0],
+    verts[points - 1][1],
+    closeMid[0],
+    closeMid[1],
+  );
   ctx.closePath();
   ctx.clip();
 
   // Lit sphere gradient: bright off-centre highlight → dark edge
   const grad = ctx.createRadialGradient(
-    cx - baseR * 0.25, cy - baseR * 0.25, 0,
-    cx, cy, baseR,
+    cx - baseR * 0.25,
+    cy - baseR * 0.25,
+    0,
+    cx,
+    cy,
+    baseR,
   );
   grad.addColorStop(0.0, "rgba(255,255,255,1)");
   grad.addColorStop(0.25, "rgba(200,190,175,1)");
@@ -162,7 +171,7 @@ function getNeoAtlasTexture(): THREE.Texture {
   return _neoAtlasTexture;
 }
 
-const NEO_VERT = /* glsl */`
+const NEO_VERT = /* glsl */ `
   attribute float atlasIndex;
   attribute vec3 color;
   attribute float diameterKm;
@@ -188,7 +197,7 @@ const NEO_VERT = /* glsl */`
   }
 `;
 
-const NEO_FRAG = /* glsl */`
+const NEO_FRAG = /* glsl */ `
   uniform sampler2D atlas;
   varying vec2 vUv;
   varying vec3 vColor;
@@ -315,7 +324,11 @@ export class SolarSystemScene {
   }
 
   private addSun(): void {
-    const geo = new THREE.SphereGeometry(SUN_RADIUS_AU, SUN_SPHERE_SEGMENTS, SUN_SPHERE_SEGMENTS);
+    const geo = new THREE.SphereGeometry(
+      SUN_RADIUS_AU,
+      SUN_SPHERE_SEGMENTS,
+      SUN_SPHERE_SEGMENTS,
+    );
     const mat = new THREE.MeshStandardMaterial({
       color: SUN_COLOUR_HEX,
       emissive: SUN_EMISSIVE_HEX,
@@ -358,7 +371,11 @@ export class SolarSystemScene {
     size: number,
     textureUrl: string,
   ): THREE.Mesh {
-    const geo = new THREE.SphereGeometry(size, PLANET_SPHERE_SEGMENTS, PLANET_SPHERE_SEGMENTS);
+    const geo = new THREE.SphereGeometry(
+      size,
+      PLANET_SPHERE_SEGMENTS,
+      PLANET_SPHERE_SEGMENTS,
+    );
     const mat = new THREE.MeshStandardMaterial({ color });
     this.textureLoader.load(textureUrl, (tex) => {
       mat.map = tex;

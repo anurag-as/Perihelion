@@ -36,7 +36,8 @@ function enrichPositions(neos: NeoData[]): NeoData[] {
 
     const azimuthRad = (h1 / 0x100000000) * TWO_PI;
     const sign = h3 < 0x80000000 ? 1 : -1;
-    const inclinationRad = sign * Math.asin(h2 / 0x100000000) * INCLINATION_MAX_RAD;
+    const inclinationRad =
+      sign * Math.asin(h2 / 0x100000000) * INCLINATION_MAX_RAD;
 
     try {
       const position3d = neoPosition(

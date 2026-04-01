@@ -44,7 +44,8 @@ export const PLANET_DATA = [
     name: "Mercury",
     radiusAU: 0.387,
     color: "#b5b5b5",
-    textureUrl: "https://upload.wikimedia.org/wikipedia/commons/9/92/Solarsystemscope_texture_2k_mercury.jpg",
+    textureUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/9/92/Solarsystemscope_texture_2k_mercury.jpg",
     size: 0.012,
     L0: 252.25,
     n: 4.09234,
@@ -53,8 +54,9 @@ export const PLANET_DATA = [
     name: "Venus",
     radiusAU: 0.723,
     color: "#e8cda0",
-    textureUrl: "https://upload.wikimedia.org/wikipedia/commons/4/40/Solarsystemscope_texture_2k_venus_surface.jpg",
-    size: 0.030,
+    textureUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/4/40/Solarsystemscope_texture_2k_venus_surface.jpg",
+    size: 0.03,
     L0: 181.98,
     n: 1.60214,
   },
@@ -62,7 +64,8 @@ export const PLANET_DATA = [
     name: "Earth",
     radiusAU: 1.0,
     color: "#4fa3e0",
-    textureUrl: "https://upload.wikimedia.org/wikipedia/commons/c/c3/Solarsystemscope_texture_2k_earth_daymap.jpg",
+    textureUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/c/c3/Solarsystemscope_texture_2k_earth_daymap.jpg",
     size: 0.032,
     L0: 100.46,
     n: 0.98563,
@@ -71,7 +74,8 @@ export const PLANET_DATA = [
     name: "Mars",
     radiusAU: 1.524,
     color: "#c1440e",
-    textureUrl: "https://upload.wikimedia.org/wikipedia/commons/4/46/Solarsystemscope_texture_2k_mars.jpg",
+    textureUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/4/46/Solarsystemscope_texture_2k_mars.jpg",
     size: 0.017,
     L0: 355.43,
     n: 0.52403,
@@ -80,8 +84,9 @@ export const PLANET_DATA = [
     name: "Jupiter",
     radiusAU: 5.203,
     color: "#c88b3a",
-    textureUrl: "https://upload.wikimedia.org/wikipedia/commons/b/be/Solarsystemscope_texture_2k_jupiter.jpg",
-    size: 0.120,
+    textureUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/b/be/Solarsystemscope_texture_2k_jupiter.jpg",
+    size: 0.12,
     L0: 34.4,
     n: 0.08309,
   },
@@ -89,8 +94,9 @@ export const PLANET_DATA = [
     name: "Saturn",
     radiusAU: 9.537,
     color: "#e4d191",
-    textureUrl: "https://upload.wikimedia.org/wikipedia/commons/e/ea/Solarsystemscope_texture_2k_saturn.jpg",
-    size: 0.100,
+    textureUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/e/ea/Solarsystemscope_texture_2k_saturn.jpg",
+    size: 0.1,
     L0: 49.94,
     n: 0.03346,
   },
@@ -98,7 +104,8 @@ export const PLANET_DATA = [
     name: "Uranus",
     radiusAU: 19.19,
     color: "#7de8e8",
-    textureUrl: "https://upload.wikimedia.org/wikipedia/commons/9/95/Solarsystemscope_texture_2k_uranus.jpg",
+    textureUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/9/95/Solarsystemscope_texture_2k_uranus.jpg",
     size: 0.055,
     L0: 313.23,
     n: 0.01172,
@@ -107,7 +114,8 @@ export const PLANET_DATA = [
     name: "Neptune",
     radiusAU: 30.07,
     color: "#4b70dd",
-    textureUrl: "https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_neptune.jpg",
+    textureUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_neptune.jpg",
     size: 0.052,
     L0: 304.88,
     n: 0.00598,
@@ -152,7 +160,8 @@ export const SCENE_BACKGROUND_HEX = 0x000008;
 export const SUN_RADIUS_AU = 0.05;
 export const SUN_COLOUR_HEX = 0xffdd44;
 export const SUN_EMISSIVE_HEX = 0xffaa00;
-export const SUN_TEXTURE_URL = "https://upload.wikimedia.org/wikipedia/commons/c/cb/Solarsystemscope_texture_2k_sun.jpg";
+export const SUN_TEXTURE_URL =
+  "https://upload.wikimedia.org/wikipedia/commons/c/cb/Solarsystemscope_texture_2k_sun.jpg";
 export const AMBIENT_LIGHT_HEX = 0xffffff;
 export const AMBIENT_LIGHT_INTENSITY = 0.3;
 export const SUN_LIGHT_HEX = 0xfff4e0;
