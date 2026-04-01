@@ -211,7 +211,6 @@ export function parseNeows(response: NeowsResponse): NeoData[] {
       }
 
       const missDistAU = missDistKm / KM_PER_AU;
-      // position3d placeholder — CoordinateConverter will replace this in task 6
       const position3d: [number, number, number] = [missDistAU, 0, 0];
 
       results.push({
