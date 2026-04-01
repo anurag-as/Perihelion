@@ -1,9 +1,18 @@
 import type { MeteorShower, NeoData } from "./types";
 import { radiantToXYZ } from "./coordinateConverter";
+import {
+  CACHE_TTL_MS,
+  JPL_CAD_DEV_PROXY,
+  JPL_CAD_DIST_MAX,
+  JPL_CAD_PROD_BASE,
+  KM_PER_AU,
+  MAX_NEOWS_DAYS,
+  MS_PER_DAY,
+  NASA_NEOWS_BASE,
+  SNAPSHOT_PATH,
+} from "./constants";
 import imoData from "../../public/imo_showers.json";
 
-const KM_PER_AU = 149_597_870.7;
-const MAX_NEOWS_DAYS = 7;
 const NASA_API_KEY = (() => {
   try {
     const key = import.meta.env?.VITE_NASA_API_KEY as string | undefined;
@@ -12,7 +21,7 @@ const NASA_API_KEY = (() => {
   return "DEMO_KEY";
 })();
 const JPL_BASE =
-  import.meta.env?.DEV === true ? "/api/jpl" : "https://ssd-api.jpl.nasa.gov";
+  import.meta.env?.DEV === true ? JPL_CAD_DEV_PROXY : JPL_CAD_PROD_BASE;
 
 export type FetchStatus = "live" | "cached" | "snapshot" | "rate-limited";
 
@@ -70,7 +79,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 function daysBetween(a: Date, b: Date): number {
-  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+  return Math.round((b.getTime() - a.getTime()) / MS_PER_DAY);
 }
 
 async function safeFetch(url: string): Promise<Response> {
@@ -87,8 +96,6 @@ async function safeFetch(url: string): Promise<Response> {
   }
   return res;
 }
-
-const CACHE_TTL_MS = 3_600_000; // 1 hour
 
 interface CacheEntry<T> {
   data: T;
@@ -125,7 +132,7 @@ async function fetchNeowsChunk(
   const cached = cacheGet<NeowsResponse>(cacheKey);
   if (cached) return cached;
 
-  const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&api_key=${NASA_API_KEY}`;
+  const url = `${NASA_NEOWS_BASE}?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&api_key=${NASA_API_KEY}`;
   const res = await safeFetch(url);
   const data = (await res.json()) as NeowsResponse;
   cacheSet(cacheKey, data);
@@ -169,7 +176,7 @@ export async function fetchCad(
   const cached = cacheGet<CadResponse>(cacheKey);
   if (cached) return cached;
 
-  const url = `${JPL_BASE}/cad.api?date-min=${formatDate(startDate)}&date-max=${formatDate(endDate)}&dist-max=0.2`;
+  const url = `${JPL_BASE}/cad.api?date-min=${formatDate(startDate)}&date-max=${formatDate(endDate)}&dist-max=${JPL_CAD_DIST_MAX}`;
   const res = await safeFetch(url);
   const data = (await res.json()) as CadResponse;
   cacheSet(cacheKey, data);
@@ -226,7 +233,7 @@ export function parseNeows(response: NeowsResponse): NeoData[] {
 }
 
 export async function loadSnapshot(): Promise<NeowsResponse> {
-  const res = await fetch("/neo_snapshot.json");
+  const res = await fetch(SNAPSHOT_PATH);
   if (!res.ok) {
     throw new Error(`Failed to load snapshot: HTTP ${res.status}`);
   }

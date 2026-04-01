@@ -1,91 +1,59 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { NeoData, LayerType } from "../core/types";
-
-const PLANET_DATA = [
-  {
-    name: "Mercury",
-    radiusAU: 0.387,
-    color: "#b5b5b5",
-    size: 0.02,
-    L0: 252.25,
-    n: 4.09234,
-  },
-  {
-    name: "Venus",
-    radiusAU: 0.723,
-    color: "#e8cda0",
-    size: 0.02,
-    L0: 181.98,
-    n: 1.60214,
-  },
-  {
-    name: "Earth",
-    radiusAU: 1.0,
-    color: "#4fa3e0",
-    size: 0.02,
-    L0: 100.46,
-    n: 0.98563,
-  },
-  {
-    name: "Mars",
-    radiusAU: 1.524,
-    color: "#c1440e",
-    size: 0.02,
-    L0: 355.43,
-    n: 0.52403,
-  },
-  {
-    name: "Jupiter",
-    radiusAU: 5.203,
-    color: "#c88b3a",
-    size: 0.04,
-    L0: 34.4,
-    n: 0.08309,
-  },
-  {
-    name: "Saturn",
-    radiusAU: 9.537,
-    color: "#e4d191",
-    size: 0.04,
-    L0: 49.94,
-    n: 0.03346,
-  },
-  {
-    name: "Uranus",
-    radiusAU: 19.19,
-    color: "#7de8e8",
-    size: 0.04,
-    L0: 313.23,
-    n: 0.01172,
-  },
-  {
-    name: "Neptune",
-    radiusAU: 30.07,
-    color: "#4b70dd",
-    size: 0.04,
-    L0: 304.88,
-    n: 0.00598,
-  },
-] as const;
-
-const DEG2RAD = Math.PI / 180;
-const J2000_MS = 946728000000;
-const MS_PER_DAY = 86400000;
-const KM_PER_AU = 149597870.7;
-
-const COLOUR_HAZARDOUS: readonly [number, number, number] = [1.0, 0.267, 0.133];
-const COLOUR_CLOSE_005: readonly [number, number, number] = [1.0, 0.667, 0.0];
-const COLOUR_CLOSE_010: readonly [number, number, number] = [0.533, 0.8, 1.0];
-const COLOUR_FAR: readonly [number, number, number] = [0.2, 0.267, 0.333];
-const COLOUR_HIGHLIGHT: readonly [number, number, number] = [0.0, 1.0, 0.533];
-const COLOUR_DIM: readonly [number, number, number] = [0.2, 0.267, 0.333];
+import {
+  AMBIENT_LIGHT_HEX,
+  AMBIENT_LIGHT_INTENSITY,
+  CAMERA_FAR,
+  CAMERA_FOV,
+  CAMERA_INITIAL_Y,
+  CAMERA_INITIAL_Z,
+  CAMERA_NEAR,
+  COLOUR_DIM,
+  COLOUR_CLOSE_005,
+  COLOUR_CLOSE_010,
+  COLOUR_FAR,
+  COLOUR_HAZARDOUS,
+  COLOUR_HIGHLIGHT,
+  DEG2RAD,
+  DIAMOND_STROKE_COLOUR,
+  DIAMOND_TEXTURE_PAD,
+  DIAMOND_TEXTURE_SIZE,
+  FLY_TO_FRAMES,
+  FLY_TO_OFFSET_AU,
+  HAZARD_DIAMOND_ALPHA_TEST,
+  HAZARD_DIAMOND_SIZE,
+  J2000_MS,
+  KM_PER_AU,
+  MS_PER_DAY,
+  NEO_POINT_SIZE,
+  ORBIT_DAMPING_FACTOR,
+  ORBIT_MAX_DISTANCE,
+  ORBIT_MIN_DISTANCE,
+  ORBIT_RING_COLOUR_HEX,
+  ORBIT_RING_MIN_TUBE,
+  ORBIT_RING_OPACITY,
+  ORBIT_RING_TUBE_RATIO,
+  PLANET_DATA,
+  PROXIMITY_CLOSE_AU,
+  PROXIMITY_MID_AU,
+  PULSE_BRIGHTNESS_RANGE,
+  PULSE_MIN_BRIGHTNESS,
+  PULSE_SPEED,
+  SCENE_BACKGROUND_HEX,
+  SUN_EMISSIVE_HEX,
+  SUN_LIGHT_DISTANCE_AU,
+  SUN_LIGHT_HEX,
+  SUN_LIGHT_INTENSITY,
+  SUN_COLOUR_HEX,
+  SUN_RADIUS_AU,
+} from "../core/constants";
 
 function neoColour(neo: NeoData): readonly [number, number, number] {
   if (neo.hazardous) return COLOUR_HAZARDOUS;
   const distAU = neo.missDistKm / KM_PER_AU;
-  if (distAU <= 0.05) return COLOUR_CLOSE_005;
-  if (distAU <= 0.1) return COLOUR_CLOSE_010;
+  if (distAU <= PROXIMITY_CLOSE_AU) return COLOUR_CLOSE_005;
+  if (distAU <= PROXIMITY_MID_AU) return COLOUR_CLOSE_010;
   return COLOUR_FAR;
 }
 
@@ -94,19 +62,18 @@ let _diamondTexture: THREE.Texture | null = null;
 
 function getDiamondTexture(): THREE.Texture {
   if (_diamondTexture) return _diamondTexture;
-  const size = 32;
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = DIAMOND_TEXTURE_SIZE;
+  canvas.height = DIAMOND_TEXTURE_SIZE;
   const ctx = canvas.getContext("2d")!;
-  const half = size / 2;
-  const pad = 3;
-  ctx.strokeStyle = "#FF4422";
+  const half = DIAMOND_TEXTURE_SIZE / 2;
+  const pad = DIAMOND_TEXTURE_PAD;
+  ctx.strokeStyle = DIAMOND_STROKE_COLOUR;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(half, pad);
-  ctx.lineTo(size - pad, half);
-  ctx.lineTo(half, size - pad);
+  ctx.lineTo(DIAMOND_TEXTURE_SIZE - pad, half);
+  ctx.lineTo(half, DIAMOND_TEXTURE_SIZE - pad);
   ctx.lineTo(pad, half);
   ctx.closePath();
   ctx.stroke();
@@ -150,7 +117,7 @@ export class SolarSystemScene {
 
   init(container: HTMLElement): void {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000008);
+    this.scene.background = new THREE.Color(SCENE_BACKGROUND_HEX);
 
     const { clientWidth: w, clientHeight: h } = container;
 
@@ -159,14 +126,19 @@ export class SolarSystemScene {
     this.renderer.setSize(w, h);
     container.appendChild(this.renderer.domElement);
 
-    this.camera = new THREE.PerspectiveCamera(60, w / h, 0.001, 1000);
-    this.camera.position.set(0, 8, 20);
+    this.camera = new THREE.PerspectiveCamera(
+      CAMERA_FOV,
+      w / h,
+      CAMERA_NEAR,
+      CAMERA_FAR,
+    );
+    this.camera.position.set(0, CAMERA_INITIAL_Y, CAMERA_INITIAL_Z);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.minDistance = 0.1;
-    this.controls.maxDistance = 200;
+    this.controls.dampingFactor = ORBIT_DAMPING_FACTOR;
+    this.controls.minDistance = ORBIT_MIN_DISTANCE;
+    this.controls.maxDistance = ORBIT_MAX_DISTANCE;
 
     this.addAmbientLight();
     this.addSun();
@@ -184,16 +156,22 @@ export class SolarSystemScene {
   }
 
   private addAmbientLight(): void {
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.3));
-    const sunLight = new THREE.PointLight(0xfff4e0, 2, 200);
+    this.scene.add(
+      new THREE.AmbientLight(AMBIENT_LIGHT_HEX, AMBIENT_LIGHT_INTENSITY),
+    );
+    const sunLight = new THREE.PointLight(
+      SUN_LIGHT_HEX,
+      SUN_LIGHT_INTENSITY,
+      SUN_LIGHT_DISTANCE_AU,
+    );
     this.scene.add(sunLight);
   }
 
   private addSun(): void {
-    const geo = new THREE.SphereGeometry(0.05, 32, 32);
+    const geo = new THREE.SphereGeometry(SUN_RADIUS_AU, 32, 32);
     const mat = new THREE.MeshStandardMaterial({
-      color: 0xffdd44,
-      emissive: 0xffaa00,
+      color: SUN_COLOUR_HEX,
+      emissive: SUN_EMISSIVE_HEX,
       emissiveIntensity: 1,
     });
     this.scene.add(new THREE.Mesh(geo, mat));
@@ -235,12 +213,15 @@ export class SolarSystemScene {
 
   private createOrbitRing(radiusAU: number): THREE.Mesh {
     // TorusGeometry is in the XY plane by default; rotate to XZ (ecliptic plane).
-    const tubeRadius = Math.max(radiusAU * 0.003, 0.002);
+    const tubeRadius = Math.max(
+      radiusAU * ORBIT_RING_TUBE_RATIO,
+      ORBIT_RING_MIN_TUBE,
+    );
     const geo = new THREE.TorusGeometry(radiusAU, tubeRadius, 4, 128);
     const mat = new THREE.MeshBasicMaterial({
-      color: 0x334455,
+      color: ORBIT_RING_COLOUR_HEX,
       transparent: true,
-      opacity: 0.35,
+      opacity: ORBIT_RING_OPACITY,
     });
     const torus = new THREE.Mesh(geo, mat);
     torus.rotation.x = Math.PI / 2;
@@ -262,7 +243,9 @@ export class SolarSystemScene {
     if (!this.selectedNeo || !this.neoPoints) return;
     const idx = this._displayNeos.indexOf(this.selectedNeo);
     if (idx === -1) return;
-    const brightness = 0.6 + 0.4 * ((Math.sin(Date.now() * 0.003) + 1) / 2);
+    const brightness =
+      PULSE_MIN_BRIGHTNESS +
+      PULSE_BRIGHTNESS_RANGE * ((Math.sin(Date.now() * PULSE_SPEED) + 1) / 2);
     const colorAttr = this.neoPoints.geometry.getAttribute(
       "color",
     ) as THREE.BufferAttribute;
@@ -272,7 +255,7 @@ export class SolarSystemScene {
 
   private tickFlyTo(): void {
     if (!this.flyTarget || this.flyFramesLeft <= 0) return;
-    const alpha = (1 - this.flyFramesLeft / 60) * 0.1 + 0.02;
+    const alpha = (1 - this.flyFramesLeft / FLY_TO_FRAMES) * 0.1 + 0.02;
     this.camera.position.lerp(this.flyTarget, alpha);
     if (this.flyControlsTarget) {
       this.controls.target.lerp(this.flyControlsTarget, alpha);
@@ -315,7 +298,7 @@ export class SolarSystemScene {
     this.neoPoints = new THREE.Points(
       geo,
       new THREE.PointsMaterial({
-        size: 0.04,
+        size: NEO_POINT_SIZE,
         vertexColors: true,
         sizeAttenuation: true,
       }),
@@ -334,10 +317,10 @@ export class SolarSystemScene {
       const hGeo = new THREE.BufferGeometry();
       hGeo.setAttribute("position", new THREE.BufferAttribute(hPos, 3));
       const hMat = new THREE.PointsMaterial({
-        size: 0.1,
+        size: HAZARD_DIAMOND_SIZE,
         map: getDiamondTexture(),
         transparent: true,
-        alphaTest: 0.1,
+        alphaTest: HAZARD_DIAMOND_ALPHA_TEST,
         sizeAttenuation: true,
         depthWrite: false,
       });
@@ -376,13 +359,15 @@ export class SolarSystemScene {
   flyToNeo(neo: NeoData): void {
     const [nx, ny, nz] = neo.position3d;
     const neoPos = new THREE.Vector3(nx, ny, nz);
-    // Place camera 0.5 AU back along the camera→NEO direction.
+    // Place camera FLY_TO_OFFSET_AU back along the camera→NEO direction.
     const dir = new THREE.Vector3()
       .subVectors(neoPos, this.camera.position)
       .normalize();
-    this.flyTarget = neoPos.clone().sub(dir.clone().multiplyScalar(0.5));
+    this.flyTarget = neoPos
+      .clone()
+      .sub(dir.clone().multiplyScalar(FLY_TO_OFFSET_AU));
     this.flyControlsTarget = neoPos.clone();
-    this.flyFramesLeft = 60;
+    this.flyFramesLeft = FLY_TO_FRAMES;
   }
 
   setLayerVisible(layer: LayerType, visible: boolean): void {
