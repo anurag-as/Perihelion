@@ -4,7 +4,7 @@ import {
   earthPositionAU,
   neoPosition,
   radiantToXYZ,
-} from "./coordinateConverter";
+} from "../../src/core/coordinateConverter";
 
 const J2000_MS = 946728000000;
 const KM_PER_AU = 149_597_870.7;

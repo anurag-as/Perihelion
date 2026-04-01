@@ -8,5 +8,6 @@ export default defineConfig({
   plugins: [react(), wasm(), topLevelAwait()],
   test: {
     environment: "node",
+    include: ["tests/**/*.test.ts"],
   },
 });
