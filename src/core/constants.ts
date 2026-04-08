@@ -226,3 +226,18 @@ export const SNAPSHOT_PATH = "/neo_snapshot.json";
 
 export const FETCH_LOOKAHEAD_DAYS = 30;
 export const NEO_INCLINATION_MAX_DEG = 80;
+
+// ---------------------------------------------------------------------------
+// NEO legend entries — category, display colour, and label
+// ---------------------------------------------------------------------------
+
+export const NEO_LEGEND_ENTRIES = [
+  {
+    category: "hazardous" as const,
+    color: "#FF4422",
+    label: "Potentially hazardous",
+  },
+  { category: "close005" as const, color: "#FFAA00", label: "Within 0.05 AU" },
+  { category: "close010" as const, color: "#88CCFF", label: "Within 0.1 AU" },
+  { category: "far" as const, color: "#334455", label: "Beyond 0.1 AU" },
+] as const;

@@ -4,6 +4,11 @@ import CachedDataBanner from "./components/CachedDataBanner";
 import ProximitySlider, {
   PROXIMITY_MAX_AU,
 } from "./components/ProximitySlider";
+import NeoLegend, {
+  ALL_CATEGORIES,
+  neoCategory,
+  type NeoCategory,
+} from "./components/NeoLegend";
 import {
   loadSnapshot,
   parseNeows,
@@ -70,30 +75,71 @@ export default function App() {
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
   const [proximityRadius, setProximityRadius] = useState(DEFAULT_RADIUS_AU);
   const [proximityCount, setProximityCount] = useState(0);
+  const [activeCategories, setActiveCategories] = useState<Set<NeoCategory>>(
+    new Set(ALL_CATEGORIES),
+  );
 
-  const onProximityChange = useCallback((radiusAU: number) => {
-    setProximityRadius(radiusAU);
-    const index = indexRef.current;
-    const scene = sceneRef.current;
-    if (!index || !index.isReady() || !scene) return;
+  const applyFilters = useCallback(
+    (radiusAU: number, categories: Set<NeoCategory>) => {
+      const index = indexRef.current;
+      const scene = sceneRef.current;
+      if (!index || !index.isReady() || !scene) return;
 
-    // At max radius show everything unfiltered.
-    if (radiusAU >= PROXIMITY_MAX_AU) {
-      scene.highlightNeos(null);
-      setProximityCount(index.stats().point_count);
-      return;
-    }
+      const atMax = radiusAU >= PROXIMITY_MAX_AU;
+      const allCats = categories.size === ALL_CATEGORIES.length;
 
-    const earthPos = earthPositionAU(new Date());
-    const matches = index.rangeQuery(earthPos, radiusAU);
-    const ids = new Set(
-      matches
-        .map((n) => n.bonsaiId)
-        .filter((id): id is bigint => id !== undefined),
-    );
-    scene.highlightNeos(ids);
-    setProximityCount(matches.length);
-  }, []);
+      // Get proximity candidates
+      let candidates: NeoData[];
+      if (atMax) {
+        candidates = index.getStore().getAll();
+      } else {
+        const earthPos = earthPositionAU(new Date());
+        candidates = index.rangeQuery(earthPos, radiusAU);
+      }
+
+      // Apply category filter
+      const filtered = allCats
+        ? candidates
+        : candidates.filter((n) => categories.has(neoCategory(n)));
+
+      if (atMax && allCats) {
+        scene.highlightNeos(null);
+      } else {
+        const ids = new Set(
+          filtered
+            .map((n) => n.bonsaiId)
+            .filter((id): id is bigint => id !== undefined),
+        );
+        scene.highlightNeos(ids);
+      }
+      setProximityCount(filtered.length);
+    },
+    [],
+  );
+
+  const onProximityChange = useCallback(
+    (radiusAU: number) => {
+      setProximityRadius(radiusAU);
+      applyFilters(radiusAU, activeCategories);
+    },
+    [activeCategories, applyFilters],
+  );
+
+  const onCategoryToggle = useCallback(
+    (category: NeoCategory) => {
+      setActiveCategories((prev) => {
+        const next = new Set(prev);
+        if (next.has(category)) {
+          next.delete(category);
+        } else {
+          next.add(category);
+        }
+        applyFilters(proximityRadius, next);
+        return next;
+      });
+    },
+    [proximityRadius, applyFilters],
+  );
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -172,8 +218,12 @@ export default function App() {
   return (
     <div className="relative w-screen h-screen bg-[#000008] overflow-hidden">
       <CachedDataBanner status={fetchStatus} />
+      <NeoLegend
+        activeCategories={activeCategories}
+        onToggle={onCategoryToggle}
+      />
       <div ref={containerRef} className="w-full h-full" />
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+      <div className="absolute bottom-4 left-4">
         <ProximitySlider
           radiusAU={proximityRadius}
           matchCount={proximityCount}

@@ -32,6 +32,8 @@ export interface QueryState {
 
 export type LayerType = "planets" | "trajectories" | "meteors" | "hazardOnly";
 
+export type NeoCategory = "hazardous" | "close005" | "close010" | "far";
+
 export interface KnnResult {
   ids: BigInt64Array;
   distances: Float64Array;
