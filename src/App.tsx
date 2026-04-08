@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SolarSystemScene } from "./components/SolarSystemScene";
+import { NeoRaycaster } from "./components/Raycaster";
 import CachedDataBanner from "./components/CachedDataBanner";
 import ProximitySlider, {
   PROXIMITY_MAX_AU,
 } from "./components/ProximitySlider";
+import InfoPanel from "./components/InfoPanel";
 import NeoLegend, {
   ALL_CATEGORIES,
   neoCategory,
@@ -72,12 +74,14 @@ export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SolarSystemScene | null>(null);
   const indexRef = useRef<IndexManager | null>(null);
+  const raycasterRef = useRef<NeoRaycaster | null>(null);
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
   const [proximityRadius, setProximityRadius] = useState(DEFAULT_RADIUS_AU);
   const [proximityCount, setProximityCount] = useState(0);
   const [activeCategories, setActiveCategories] = useState<Set<NeoCategory>>(
     new Set(ALL_CATEGORIES),
   );
+  const [selectedNeo, setSelectedNeo] = useState<NeoData | null>(null);
 
   const applyFilters = useCallback(
     (radiusAU: number, categories: Set<NeoCategory>) => {
@@ -141,6 +145,20 @@ export default function App() {
     [proximityRadius, applyFilters],
   );
 
+  const onSceneClick = useCallback((worldPoint: import("three").Vector3) => {
+    const index = indexRef.current;
+    const scene = sceneRef.current;
+    if (!index || !index.isReady() || !scene) return;
+    const nearest = index.knnQuery(
+      [worldPoint.x, worldPoint.y, worldPoint.z],
+      1,
+    );
+    if (nearest.length > 0) {
+      setSelectedNeo(nearest[0]);
+      scene.selectNeo(nearest[0]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -150,6 +168,25 @@ export default function App() {
 
     const index = new IndexManager();
     indexRef.current = index;
+
+    const raycaster = new NeoRaycaster(
+      (neo) => {
+        setSelectedNeo(neo);
+        scene.selectNeo(neo);
+      },
+      (worldPoint) => onSceneClick(worldPoint),
+    );
+    raycasterRef.current = raycaster;
+
+    const container = containerRef.current;
+    const handleClick = (e: MouseEvent) => {
+      raycaster.onMouseClick(e, container);
+    };
+    const handleMove = (e: MouseEvent) => {
+      raycaster.onMouseMove(e, container);
+    };
+    container.addEventListener("click", handleClick);
+    container.addEventListener("mousemove", handleMove);
 
     let cancelled = false;
 
@@ -190,6 +227,10 @@ export default function App() {
         // can correctly match by id.
         const enrichedNeos = index.getStore().getAll();
         scene.updateNeoPoints(enrichedNeos);
+        setSelectedNeo(null);
+        raycaster.setCamera(scene.getCamera());
+        const pts = scene.getNeoPoints();
+        if (pts) raycaster.setNeoPoints(pts, scene.displayNeos);
         const earthPos = earthPositionAU(new Date());
         const initMatches = index.rangeQuery(earthPos, DEFAULT_RADIUS_AU);
         const initIds = new Set(
@@ -209,20 +250,26 @@ export default function App() {
 
     return () => {
       cancelled = true;
+      container.removeEventListener("click", handleClick);
+      container.removeEventListener("mousemove", handleMove);
       scene.dispose();
       sceneRef.current = null;
       indexRef.current = null;
+      raycasterRef.current = null;
     };
   }, []);
 
   return (
     <div className="relative w-screen h-screen bg-[#000008] overflow-hidden">
       <CachedDataBanner status={fetchStatus} />
-      <NeoLegend
-        activeCategories={activeCategories}
-        onToggle={onCategoryToggle}
-      />
       <div ref={containerRef} className="w-full h-full" />
+      <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
+        <NeoLegend
+          activeCategories={activeCategories}
+          onToggle={onCategoryToggle}
+        />
+        <InfoPanel neo={selectedNeo} />
+      </div>
       <div className="absolute bottom-4 left-4">
         <ProximitySlider
           radiusAU={proximityRadius}

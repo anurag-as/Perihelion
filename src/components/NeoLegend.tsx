@@ -39,7 +39,7 @@ export default function NeoLegend({
     return (
       <button
         onClick={() => setVisible(true)}
-        className="absolute top-4 right-4 bg-black/60 text-white text-xs px-2 py-1 rounded"
+        className="bg-black/60 text-white text-xs px-2 py-1 rounded"
       >
         Legend
       </button>
@@ -47,7 +47,7 @@ export default function NeoLegend({
   }
 
   return (
-    <div className="absolute top-4 right-4 bg-black/60 text-white rounded-lg px-3 py-2 min-w-[200px]">
+    <div className="bg-black/60 text-white rounded-lg px-3 py-2 min-w-[200px]">
       <div className="flex justify-between items-center mb-2">
         <span className="text-xs font-semibold text-gray-300">NEO Colours</span>
         <button

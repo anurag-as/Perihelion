@@ -225,6 +225,15 @@ export const JPL_CAD_DEV_PROXY = "/api/jpl";
 export const SNAPSHOT_PATH = "/neo_snapshot.json";
 
 export const FETCH_LOOKAHEAD_DAYS = 30;
+
+// ---------------------------------------------------------------------------
+// InfoPanel
+// ---------------------------------------------------------------------------
+
+export const JPL_SBDB_URL_BASE =
+  "https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=";
+export const INFO_PANEL_COPY_RESET_MS = 2000;
+export const MISS_DIST_MEGA_KM_THRESHOLD = 1_000_000;
 export const NEO_INCLINATION_MAX_DEG = 80;
 
 // ---------------------------------------------------------------------------

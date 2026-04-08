@@ -272,6 +272,18 @@ export class SolarSystemScene {
     return this._currentNeos;
   }
 
+  get displayNeos(): NeoData[] {
+    return this._displayNeos;
+  }
+
+  getCamera(): THREE.PerspectiveCamera {
+    return this.camera;
+  }
+
+  getNeoPoints(): THREE.Points | null {
+    return this.neoPoints;
+  }
+
   private layers: Record<LayerType, THREE.Object3D[]> = {
     planets: [],
     trajectories: [],
@@ -457,6 +469,7 @@ export class SolarSystemScene {
 
   updateNeoPoints(neos: NeoData[]): void {
     this.disposeNeoPoints();
+    this.selectedNeo = null;
 
     this._currentNeos = neos;
     this._displayNeos = this.hazardOnlyActive
@@ -556,6 +569,17 @@ export class SolarSystemScene {
     colorAttr.needsUpdate = true;
     alphaAttr.needsUpdate = true;
 
+    // Re-apply selection highlight so highlightNeos doesn't clobber it.
+    if (this.selectedNeo) {
+      const selIdx = this._displayNeos.indexOf(this.selectedNeo);
+      if (selIdx !== -1) {
+        colorAttr.setXYZ(selIdx, 1, 1, 1);
+        alphaAttr.setX(selIdx, 1.0);
+        colorAttr.needsUpdate = true;
+        alphaAttr.needsUpdate = true;
+      }
+    }
+
     // Sync hazard diamond visibility.
     if (this.hazardPoints) {
       this.scene.remove(this.hazardPoints);
@@ -593,7 +617,31 @@ export class SolarSystemScene {
   }
 
   selectNeo(neo: NeoData): void {
+    if (!this.neoPoints) {
+      this.selectedNeo = neo;
+      return;
+    }
+    const colorAttr = this.neoPoints.geometry.getAttribute(
+      "color",
+    ) as THREE.BufferAttribute;
+
+    // Restore previous selection to its natural colour.
+    if (this.selectedNeo) {
+      const prevIdx = this._displayNeos.indexOf(this.selectedNeo);
+      if (prevIdx !== -1) {
+        colorAttr.setXYZ(prevIdx, ...neoColour(this.selectedNeo));
+      }
+    }
+
     this.selectedNeo = neo;
+
+    // Paint new selection white.
+    const idx = this._displayNeos.indexOf(neo);
+    if (idx !== -1) {
+      colorAttr.setXYZ(idx, 1, 1, 1);
+    }
+
+    colorAttr.needsUpdate = true;
   }
 
   flyToNeo(neo: NeoData): void {
