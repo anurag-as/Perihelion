@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "bonsai-index"
-version = "0.1.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08b3a393df45fdbab6314d60f17be5625f9cc24291e5628b34e5fe44705303d9"
+checksum = "a59330443e1a527e6edf9f95c19b19e44d07ae8601dab23a46d751cad490a9e4"
 dependencies = [
  "wasm-bindgen",
 ]

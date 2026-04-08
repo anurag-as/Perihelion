@@ -14,6 +14,7 @@ interface WasmIndex {
   ): Float64Array;
   knn_query(x: number, y: number, k: number): Float64Array;
   stats(): Float64Array;
+  clear(): void;
   len(): number;
   is_empty(): boolean;
   free(): void;
@@ -42,20 +43,18 @@ function parseStats(raw: Float64Array): BonsaiStats {
 export class IndexManager {
   private index: WasmIndex | null = null;
   private store: DataStore = createDataStore();
-  // Sequential u32 payload → NeoData (parallel array for O(1) lookup)
   private payloadMap: NeoData[] = [];
   private ready = false;
 
   async init(): Promise<void> {
     if (this.ready) return;
-
     if (!wasmInitFn) {
       const mod = await import("../wasm/pkg/perihelion_wasm.js");
       wasmInitFn = mod.default as () => Promise<unknown>;
       WasmBonsaiIndexCtor = mod.WasmBonsaiIndex as new () => WasmIndex;
     }
-
     await wasmInitFn();
+    // Single instance for the lifetime of the manager; rebuild() resets via clear().
     this.index = new WasmBonsaiIndexCtor!();
     this.ready = true;
   }
@@ -64,100 +63,72 @@ export class IndexManager {
     return this.ready;
   }
 
-  // Insert all objects into the current index without clearing first.
   insertAll(objects: NeoData[]): void {
-    if (!this.index || !WasmBonsaiIndexCtor) {
+    if (!this.index)
       throw new Error("IndexManager not initialised — call init() first");
-    }
-
     for (const obj of objects) {
       const payload = this.payloadMap.length;
-      const entryIdF64 = this.index.insert(
-        obj.position3d[0],
-        obj.position3d[1],
-        payload,
+      const id = BigInt(
+        Math.round(
+          this.index.insert(obj.position3d[0], obj.position3d[2], payload),
+        ),
       );
-      const bonsaiId = BigInt(Math.round(entryIdF64));
-      const neo = { ...obj, bonsaiId };
+      const neo = { ...obj, bonsaiId: id };
       this.payloadMap.push(neo);
-      this.store.set(bonsaiId, neo);
+      this.store.set(id, neo);
     }
   }
 
-  // Atomically replace the index and store with a fresh build from objects.
-  // Builds the new index first, then swaps — no queries see a partial state.
+  // clear() resets the index in-place — avoids calling new() again.
   rebuild(objects: NeoData[]): void {
-    if (!this.ready || !WasmBonsaiIndexCtor) {
+    if (!this.index)
       throw new Error("IndexManager not initialised — call init() first");
-    }
-
-    const newIndex = new WasmBonsaiIndexCtor();
-    const newStore = createDataStore();
-    const newPayloadMap: NeoData[] = [];
-
+    this.index.clear();
+    this.store = createDataStore();
+    this.payloadMap = [];
     for (const obj of objects) {
-      const payload = newPayloadMap.length;
-      const entryIdF64 = newIndex.insert(
-        obj.position3d[0],
-        obj.position3d[1],
-        payload,
+      const payload = this.payloadMap.length;
+      const id = BigInt(
+        Math.round(
+          this.index.insert(obj.position3d[0], obj.position3d[2], payload),
+        ),
       );
-      const bonsaiId = BigInt(Math.round(entryIdF64));
-      const neo = { ...obj, bonsaiId };
-      newPayloadMap.push(neo);
-      newStore.set(bonsaiId, neo);
+      const neo = { ...obj, bonsaiId: id };
+      this.payloadMap.push(neo);
+      this.store.set(id, neo);
     }
-
-    // Atomic swap — free old WASM memory
-    this.index?.free();
-    this.index = newIndex;
-    this.store = newStore;
-    this.payloadMap = newPayloadMap;
   }
 
-  // Range query: AABB over-approximation on XY, then 3D sphere refinement.
+  // AABB over-approximation on XZ (ecliptic plane), then 3D sphere refinement.
   rangeQuery(centre: [number, number, number], radiusAU: number): NeoData[] {
     if (!this.index) return [];
-
-    const [cx, cy] = centre;
+    const [cx, , cz] = centre;
     const raw = this.index.range_query(
       cx - radiusAU,
-      cy - radiusAU,
+      cz - radiusAU,
       cx + radiusAU,
-      cy + radiusAU,
+      cz + radiusAU,
     );
-
     const results: NeoData[] = [];
-    // WASM layout: [entry_id, payload, entry_id, payload, ...]
     for (let i = 0; i < raw.length; i += 2) {
-      const payload = Math.round(raw[i + 1]);
-      const neo = this.payloadMap[payload];
-      if (neo && dist3d(neo.position3d, centre) <= radiusAU) {
-        results.push(neo);
-      }
+      const neo = this.payloadMap[Math.round(raw[i + 1])];
+      if (neo && dist3d(neo.position3d, centre) <= radiusAU) results.push(neo);
     }
     return results;
   }
 
-  // kNN query: delegates to WASM, resolves NeoData, returns ordered by distance.
-  // Note: WASM index is 2D (XY only); Z is ignored for neighbour ranking.
-  // Results are re-sorted by true 3D distance after resolution.
+  // WASM index is 2D (XZ); re-sort by true 3D distance after resolution.
   knnQuery(point: [number, number, number], k: number): NeoData[] {
     if (!this.index) return [];
-
-    const raw = this.index.knn_query(point[0], point[1], k);
+    const raw = this.index.knn_query(point[0], point[2], k);
     const results: NeoData[] = [];
-    // WASM layout: [distance, entry_id, payload, distance, entry_id, payload, ...]
     for (let i = 0; i < raw.length; i += 3) {
-      const payload = Math.round(raw[i + 2]);
-      const neo = this.payloadMap[payload];
+      const neo = this.payloadMap[Math.round(raw[i + 2])];
       if (neo) results.push(neo);
     }
-    // Re-sort by true 3D distance to correct for Z being ignored in the WASM index.
-    results.sort(
+    return results.sort(
       (a, b) => dist3d(a.position3d, point) - dist3d(b.position3d, point),
     );
-    return results;
   }
 
   stats(): BonsaiStats {

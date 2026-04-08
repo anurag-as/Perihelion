@@ -18,6 +18,12 @@ class MockWasmBonsaiIndex {
   private migrationCount = 0;
   private queryCount = 0;
 
+  clear(): void {
+    this.points = [];
+    this.entryCounter = 0;
+    this.queryCount = 0;
+  }
+
   insert(x: number, y: number, payload: number): number {
     const id = this.entryCounter++;
     this.points.push({ x, y, payload });

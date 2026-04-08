@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SolarSystemScene } from "./components/SolarSystemScene";
 import CachedDataBanner from "./components/CachedDataBanner";
+import ProximitySlider, {
+  PROXIMITY_MAX_AU,
+} from "./components/ProximitySlider";
 import {
   loadSnapshot,
   parseNeows,
@@ -8,7 +11,8 @@ import {
   fetchCad,
   type FetchStatus,
 } from "./core/dataFetcher";
-import { neoPosition } from "./core/coordinateConverter";
+import { neoPosition, earthPositionAU } from "./core/coordinateConverter";
+import { IndexManager } from "./core/indexManager";
 import {
   FETCH_LOOKAHEAD_DAYS,
   MS_PER_DAY,
@@ -17,11 +21,14 @@ import {
 } from "./core/constants";
 import type { NeoData } from "./core/types";
 
+const DEFAULT_RADIUS_AU = PROXIMITY_MAX_AU / 2;
+
 const TWO_PI = 2 * Math.PI;
 const INCLINATION_MAX_RAD = NEO_INCLINATION_MAX_DEG * DEG2RAD;
 
 function enrichPositions(neos: NeoData[]): NeoData[] {
   const enriched: NeoData[] = [];
+  const today = new Date();
   for (let i = 0; i < neos.length; i++) {
     const neo = neos[i];
 
@@ -34,12 +41,17 @@ function enrichPositions(neos: NeoData[]): NeoData[] {
     const sign = h3 < 0x80000000 ? 1 : -1;
     const inclinationRad = sign * (h2 / 0x100000000) * INCLINATION_MAX_RAD;
 
+    // Propagate NEO to today's position: daysFromNow is days from approachDate to today
+    // (negative = today is before closest approach, positive = today is after)
+    const daysFromNow =
+      (today.getTime() - neo.approachDate.getTime()) / MS_PER_DAY;
+
     try {
       const position3d = neoPosition(
         neo.approachDate,
         neo.missDistKm,
         neo.velocityKmS,
-        0,
+        daysFromNow,
         azimuthRad,
         inclinationRad,
       );
@@ -54,7 +66,34 @@ function enrichPositions(neos: NeoData[]): NeoData[] {
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SolarSystemScene | null>(null);
+  const indexRef = useRef<IndexManager | null>(null);
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
+  const [proximityRadius, setProximityRadius] = useState(DEFAULT_RADIUS_AU);
+  const [proximityCount, setProximityCount] = useState(0);
+
+  const onProximityChange = useCallback((radiusAU: number) => {
+    setProximityRadius(radiusAU);
+    const index = indexRef.current;
+    const scene = sceneRef.current;
+    if (!index || !index.isReady() || !scene) return;
+
+    // At max radius show everything unfiltered.
+    if (radiusAU >= PROXIMITY_MAX_AU) {
+      scene.highlightNeos(null);
+      setProximityCount(index.stats().point_count);
+      return;
+    }
+
+    const earthPos = earthPositionAU(new Date());
+    const matches = index.rangeQuery(earthPos, radiusAU);
+    const ids = new Set(
+      matches
+        .map((n) => n.bonsaiId)
+        .filter((id): id is bigint => id !== undefined),
+    );
+    scene.highlightNeos(ids);
+    setProximityCount(matches.length);
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -62,6 +101,9 @@ export default function App() {
     const scene = new SolarSystemScene();
     sceneRef.current = scene;
     scene.init(containerRef.current);
+
+    const index = new IndexManager();
+    indexRef.current = index;
 
     let cancelled = false;
 
@@ -94,6 +136,27 @@ export default function App() {
 
       scene.updateNeoPoints(neos);
       scene.updatePlanetPositions(new Date());
+
+      try {
+        await index.init();
+        index.rebuild(neos);
+        // Re-render with bonsaiId-enriched NEOs from the index so highlightNeos
+        // can correctly match by id.
+        const enrichedNeos = index.getStore().getAll();
+        scene.updateNeoPoints(enrichedNeos);
+        const earthPos = earthPositionAU(new Date());
+        const initMatches = index.rangeQuery(earthPos, DEFAULT_RADIUS_AU);
+        const initIds = new Set(
+          initMatches
+            .map((n) => n.bonsaiId)
+            .filter((id): id is bigint => id !== undefined),
+        );
+        scene.highlightNeos(initIds);
+        setProximityCount(initMatches.length);
+      } catch (e) {
+        console.error("WASM init/rebuild failed:", e);
+        // WASM unavailable — scene still renders without query features
+      }
     }
 
     loadData();
@@ -102,6 +165,7 @@ export default function App() {
       cancelled = true;
       scene.dispose();
       sceneRef.current = null;
+      indexRef.current = null;
     };
   }, []);
 
@@ -109,6 +173,13 @@ export default function App() {
     <div className="relative w-screen h-screen bg-[#000008] overflow-hidden">
       <CachedDataBanner status={fetchStatus} />
       <div ref={containerRef} className="w-full h-full" />
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+        <ProximitySlider
+          radiusAU={proximityRadius}
+          matchCount={proximityCount}
+          onChange={onProximityChange}
+        />
+      </div>
     </div>
   );
 }
