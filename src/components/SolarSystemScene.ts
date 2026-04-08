@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { NeoData, LayerType } from "../core/types";
+import { earthPositionAU } from "../core/coordinateConverter";
 import {
   AMBIENT_LIGHT_HEX,
   AMBIENT_LIGHT_INTENSITY,
@@ -16,12 +17,13 @@ import {
   COLOUR_HAZARDOUS,
   DEG2RAD,
   DIAMOND_STROKE_COLOUR,
+  DIAMOND_STROKE_LINE_WIDTH,
   DIAMOND_TEXTURE_PAD,
   DIAMOND_TEXTURE_SIZE,
   FLY_TO_FRAMES,
   FLY_TO_OFFSET_AU,
-  HAZARD_DIAMOND_ALPHA_TEST,
-  HAZARD_DIAMOND_SIZE,
+  HAZARD_ALPHA_DISCARD,
+  HAZARD_DIAMOND_PIXEL_SIZE,
   J2000_MS,
   KM_PER_AU,
   MS_PER_DAY,
@@ -30,6 +32,7 @@ import {
   NEO_ATLAS_ROWS,
   NEO_ATLAS_SEEDS,
   NEO_ATLAS_ALPHA_DISCARD,
+  NEO_ALPHA_DISCARD,
   NEO_DIAMETER_LOG_MAX_KM,
   NEO_DIAMETER_LOG_MIN_KM,
   NEO_MIN_PIXEL_SIZE,
@@ -210,7 +213,7 @@ const NEO_FRAG = /* glsl */ `
   varying float vAlpha;
 
   void main() {
-    if (vAlpha < 0.01) discard;
+    if (vAlpha < ${NEO_ALPHA_DISCARD}) discard;
     float cellW = 1.0 / ${NEO_ATLAS_COLS}.0;
     float cellH = 1.0 / ${NEO_ATLAS_ROWS}.0;
     vec2 uv = vec2(
@@ -223,6 +226,28 @@ const NEO_FRAG = /* glsl */ `
   }
 `;
 
+const HAZARD_VERT = /* glsl */ `
+  attribute float alpha;
+  varying float vAlpha;
+  void main() {
+    vAlpha = alpha;
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = ${HAZARD_DIAMOND_PIXEL_SIZE.toFixed(1)} * (projectionMatrix[1][1] / -mvPosition.z);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const HAZARD_FRAG = /* glsl */ `
+  uniform sampler2D map;
+  varying float vAlpha;
+  void main() {
+    if (vAlpha < ${NEO_ALPHA_DISCARD}) discard;
+    vec4 texel = texture2D(map, gl_PointCoord);
+    if (texel.a < ${HAZARD_ALPHA_DISCARD}) discard;
+    gl_FragColor = vec4(texel.rgb, texel.a * vAlpha);
+  }
+`;
+
 function getDiamondTexture(): THREE.Texture {
   if (_diamondTexture) return _diamondTexture;
   const canvas = document.createElement("canvas");
@@ -232,7 +257,7 @@ function getDiamondTexture(): THREE.Texture {
   const half = DIAMOND_TEXTURE_SIZE / 2;
   const pad = DIAMOND_TEXTURE_PAD;
   ctx.strokeStyle = DIAMOND_STROKE_COLOUR;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = DIAMOND_STROKE_LINE_WIDTH;
   ctx.beginPath();
   ctx.moveTo(half, pad);
   ctx.lineTo(DIAMOND_TEXTURE_SIZE - pad, half);
@@ -308,13 +333,22 @@ export class SolarSystemScene {
       CAMERA_NEAR,
       CAMERA_FAR,
     );
-    this.camera.position.set(0, CAMERA_INITIAL_Y, CAMERA_INITIAL_Z);
+
+    // Place camera near Earth's current position so NEOs are immediately visible.
+    const [ex, ey, ez] = earthPositionAU(new Date());
+    const earthPos = new THREE.Vector3(ex, ey, ez);
+    this.camera.position.set(
+      ex + CAMERA_INITIAL_Y,
+      CAMERA_INITIAL_Y,
+      ez + CAMERA_INITIAL_Z,
+    );
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = ORBIT_DAMPING_FACTOR;
     this.controls.minDistance = ORBIT_MIN_DISTANCE;
     this.controls.maxDistance = ORBIT_MAX_DISTANCE;
+    this.controls.target.set(0, 0, 0);
 
     this.addAmbientLight();
     this.addSun();
@@ -523,6 +557,7 @@ export class SolarSystemScene {
     const hazardous = this._displayNeos.filter((n) => n.hazardous);
     if (hazardous.length > 0) {
       const hPos = new Float32Array(hazardous.length * 3);
+      const hAlpha = new Float32Array(hazardous.length).fill(1.0);
       for (let i = 0; i < hazardous.length; i++) {
         const [x, y, z] = hazardous[i].position3d;
         hPos[i * 3] = x;
@@ -531,12 +566,12 @@ export class SolarSystemScene {
       }
       const hGeo = new THREE.BufferGeometry();
       hGeo.setAttribute("position", new THREE.BufferAttribute(hPos, 3));
-      const hMat = new THREE.PointsMaterial({
-        size: HAZARD_DIAMOND_SIZE,
-        map: getDiamondTexture(),
+      hGeo.setAttribute("alpha", new THREE.BufferAttribute(hAlpha, 1));
+      const hMat = new THREE.ShaderMaterial({
+        uniforms: { map: { value: getDiamondTexture() } },
+        vertexShader: HAZARD_VERT,
+        fragmentShader: HAZARD_FRAG,
         transparent: true,
-        alphaTest: HAZARD_DIAMOND_ALPHA_TEST,
-        sizeAttenuation: true,
         depthWrite: false,
       });
       this.hazardPoints = new THREE.Points(hGeo, hMat);
@@ -580,39 +615,25 @@ export class SolarSystemScene {
       }
     }
 
-    // Sync hazard diamond visibility.
+    // Sync hazard diamond visibility by updating the alpha attribute in-place
+    // rather than rebuilding geometry on every highlight call.
     if (this.hazardPoints) {
-      this.scene.remove(this.hazardPoints);
-      this.hazardPoints.geometry.dispose();
-      (this.hazardPoints.material as THREE.Material).dispose();
-      this.hazardPoints = null;
-    }
-
-    const visibleHazardous = this._displayNeos.filter((n) => {
-      if (!n.hazardous) return false;
-      return ids === null || (n.bonsaiId !== undefined && ids.has(n.bonsaiId));
-    });
-
-    if (visibleHazardous.length > 0) {
-      const hPos = new Float32Array(visibleHazardous.length * 3);
-      for (let i = 0; i < visibleHazardous.length; i++) {
-        const [x, y, z] = visibleHazardous[i].position3d;
-        hPos[i * 3] = x;
-        hPos[i * 3 + 1] = y;
-        hPos[i * 3 + 2] = z;
+      const hazardAlpha = this.hazardPoints.geometry.getAttribute(
+        "alpha",
+      ) as THREE.BufferAttribute | undefined;
+      if (hazardAlpha) {
+        let hi = 0;
+        for (let i = 0; i < this._displayNeos.length; i++) {
+          const neo = this._displayNeos[i];
+          if (!neo.hazardous) continue;
+          const visible =
+            ids === null ||
+            (neo.bonsaiId !== undefined && ids.has(neo.bonsaiId));
+          hazardAlpha.setX(hi, visible ? 1.0 : 0.0);
+          hi++;
+        }
+        hazardAlpha.needsUpdate = true;
       }
-      const hGeo = new THREE.BufferGeometry();
-      hGeo.setAttribute("position", new THREE.BufferAttribute(hPos, 3));
-      const hMat = new THREE.PointsMaterial({
-        size: HAZARD_DIAMOND_SIZE,
-        map: getDiamondTexture(),
-        transparent: true,
-        alphaTest: HAZARD_DIAMOND_ALPHA_TEST,
-        sizeAttenuation: true,
-        depthWrite: false,
-      });
-      this.hazardPoints = new THREE.Points(hGeo, hMat);
-      this.scene.add(this.hazardPoints);
     }
   }
 
@@ -624,24 +645,32 @@ export class SolarSystemScene {
     const colorAttr = this.neoPoints.geometry.getAttribute(
       "color",
     ) as THREE.BufferAttribute;
+    const alphaAttr = this.neoPoints.geometry.getAttribute(
+      "alpha",
+    ) as THREE.BufferAttribute;
 
-    // Restore previous selection to its natural colour.
+    // Restore previous selection to its natural colour and alpha.
     if (this.selectedNeo) {
       const prevIdx = this._displayNeos.indexOf(this.selectedNeo);
       if (prevIdx !== -1) {
         colorAttr.setXYZ(prevIdx, ...neoColour(this.selectedNeo));
+        // Only restore alpha to 1 if it was dimmed solely due to selection;
+        // the highlight pass will correct it on the next filter update.
+        alphaAttr.setX(prevIdx, 1.0);
       }
     }
 
     this.selectedNeo = neo;
 
-    // Paint new selection white.
+    // Paint new selection white and ensure it's visible regardless of filter state.
     const idx = this._displayNeos.indexOf(neo);
     if (idx !== -1) {
       colorAttr.setXYZ(idx, 1, 1, 1);
+      alphaAttr.setX(idx, 1.0);
     }
 
     colorAttr.needsUpdate = true;
+    alphaAttr.needsUpdate = true;
   }
 
   flyToNeo(neo: NeoData): void {

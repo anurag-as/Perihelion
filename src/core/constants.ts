@@ -148,9 +148,9 @@ export const COLOUR_DIM: readonly [number, number, number] = [
   0.2, 0.267, 0.333,
 ]; // #334455
 
-// Proximity thresholds used for colour bucketing.
-export const PROXIMITY_CLOSE_AU = 0.05;
-export const PROXIMITY_MID_AU = 0.1;
+export const PROXIMITY_MIN_AU = 0.01;
+export const PROXIMITY_MAX_AU = 0.5;
+export const PROXIMITY_SLIDER_STEP_AU = 0.01;
 
 // ---------------------------------------------------------------------------
 // Scene rendering
@@ -171,8 +171,8 @@ export const SUN_LIGHT_DISTANCE_AU = 200;
 export const CAMERA_FOV = 60;
 export const CAMERA_NEAR = 0.001;
 export const CAMERA_FAR = 1000;
-export const CAMERA_INITIAL_Y = 8;
-export const CAMERA_INITIAL_Z = 20;
+export const CAMERA_INITIAL_Y = 0.8;
+export const CAMERA_INITIAL_Z = 1.5;
 export const ORBIT_DAMPING_FACTOR = 0.05;
 export const ORBIT_MIN_DISTANCE = 0.1;
 export const ORBIT_MAX_DISTANCE = 200;
@@ -191,8 +191,15 @@ export const NEO_SPRITE_TEXTURE_URL =
 export const NEO_ATLAS_SEEDS = [
   0x4e454f, 0x524f43, 0x4b5354, 0x415354, 0x45524f, 0x494441,
 ] as const;
-export const HAZARD_DIAMOND_SIZE = 0.1;
+// Proximity thresholds used for colour bucketing.
+export const PROXIMITY_CLOSE_AU = 0.05;
+export const PROXIMITY_MID_AU = 0.1;
 export const HAZARD_DIAMOND_ALPHA_TEST = 0.1;
+export const HAZARD_DIAMOND_SIZE = 0.1;
+export const HAZARD_DIAMOND_PIXEL_SIZE = 12.0;
+export const HAZARD_ALPHA_DISCARD = 0.05;
+export const NEO_ALPHA_DISCARD = 0.01;
+export const DIAMOND_STROKE_LINE_WIDTH = 2;
 export const ORBIT_RING_TUBE_RATIO = 0.003;
 export const ORBIT_RING_MIN_TUBE = 0.002;
 export const ORBIT_RING_OPACITY = 0.35;

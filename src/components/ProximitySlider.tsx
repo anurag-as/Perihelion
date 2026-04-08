@@ -1,8 +1,11 @@
 import type { ChangeEvent } from "react";
+import {
+  PROXIMITY_MIN_AU,
+  PROXIMITY_MAX_AU,
+  PROXIMITY_SLIDER_STEP_AU,
+} from "../core/constants";
 
-export const PROXIMITY_MIN_AU = 0.01;
-export const PROXIMITY_MAX_AU = 0.5;
-const STEP_AU = 0.01;
+export { PROXIMITY_MIN_AU, PROXIMITY_MAX_AU };
 
 interface ProximitySliderProps {
   radiusAU: number;
@@ -29,7 +32,7 @@ export default function ProximitySlider({
         type="range"
         min={PROXIMITY_MIN_AU}
         max={PROXIMITY_MAX_AU}
-        step={STEP_AU}
+        step={PROXIMITY_SLIDER_STEP_AU}
         value={radiusAU}
         onChange={handleChange}
         className="w-full accent-[#00FF88]"

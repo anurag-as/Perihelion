@@ -11,6 +11,7 @@ import NeoLegend, {
   neoCategory,
   type NeoCategory,
 } from "./components/NeoLegend";
+import SearchBar from "./components/SearchBar";
 import {
   loadSnapshot,
   parseNeows,
@@ -76,6 +77,7 @@ export default function App() {
   const indexRef = useRef<IndexManager | null>(null);
   const raycasterRef = useRef<NeoRaycaster | null>(null);
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
+  const proximityRadiusRef = useRef(DEFAULT_RADIUS_AU);
   const [proximityRadius, setProximityRadius] = useState(DEFAULT_RADIUS_AU);
   const [proximityCount, setProximityCount] = useState(0);
   const [activeCategories, setActiveCategories] = useState<Set<NeoCategory>>(
@@ -123,6 +125,7 @@ export default function App() {
 
   const onProximityChange = useCallback(
     (radiusAU: number) => {
+      proximityRadiusRef.current = radiusAU;
       setProximityRadius(radiusAU);
       applyFilters(radiusAU, activeCategories);
     },
@@ -138,12 +141,31 @@ export default function App() {
         } else {
           next.add(category);
         }
-        applyFilters(proximityRadius, next);
+        applyFilters(proximityRadiusRef.current, next);
         return next;
       });
     },
-    [proximityRadius, applyFilters],
+    [applyFilters],
   );
+
+  const onSearch = useCallback((query: string) => {
+    const index = indexRef.current;
+    const scene = sceneRef.current;
+    if (!index || !index.isReady() || !scene) return;
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) {
+      // Empty query — restore normal filter state.
+      applyFilters(proximityRadiusRef.current, activeCategories);
+      return;
+    }
+    const all = index.getStore().getAll();
+    const match = all.find((n) => n.name.toLowerCase().includes(trimmed));
+    if (match) {
+      setSelectedNeo(match);
+      scene.selectNeo(match);
+      scene.flyToNeo(match);
+    }
+  }, [activeCategories, applyFilters]);
 
   const onSceneClick = useCallback((worldPoint: import("three").Vector3) => {
     const index = indexRef.current;
@@ -222,6 +244,7 @@ export default function App() {
 
       try {
         await index.init();
+        if (cancelled) return;
         index.rebuild(neos);
         // Re-render with bonsaiId-enriched NEOs from the index so highlightNeos
         // can correctly match by id.
@@ -270,7 +293,8 @@ export default function App() {
         />
         <InfoPanel neo={selectedNeo} />
       </div>
-      <div className="absolute bottom-4 left-4">
+      <div className="absolute bottom-4 left-4 flex flex-col gap-2 items-start">
+        <SearchBar onSearch={onSearch} />
         <ProximitySlider
           radiusAU={proximityRadius}
           matchCount={proximityCount}

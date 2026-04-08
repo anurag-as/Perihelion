@@ -49,7 +49,7 @@ export default function NeoLegend({
   return (
     <div className="bg-black/60 text-white rounded-lg px-3 py-2 min-w-[200px]">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-xs font-semibold text-gray-300">NEO Colours</span>
+        <span className="text-xs font-semibold text-gray-300">NEO Filters</span>
         <button
           onClick={() => setVisible(false)}
           className="text-gray-400 hover:text-white text-xs ml-4"

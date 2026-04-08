@@ -83,7 +83,14 @@ function daysBetween(a: Date, b: Date): number {
 }
 
 async function safeFetch(url: string): Promise<Response> {
-  const res = await fetch(url);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
   if (res.status === 429) {
     const err = new Error(`Rate limit exceeded (HTTP 429): ${url}`);
     (err as Error & { status: number }).status = 429;
@@ -217,7 +224,8 @@ export function parseNeows(response: NeowsResponse): NeoData[] {
         id: asteroid.id,
         name: asteroid.name,
         diameterKm:
-          asteroid.estimated_diameter.kilometers.estimated_diameter_max,
+          asteroid.estimated_diameter?.kilometers
+            ?.estimated_diameter_max ?? 0.1,
         hazardous: asteroid.is_potentially_hazardous_asteroid,
         missDistKm,
         missDistLunar: parseFloat(approach.miss_distance.lunar),

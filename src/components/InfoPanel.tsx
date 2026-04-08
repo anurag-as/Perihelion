@@ -45,7 +45,10 @@ export default function InfoPanel({ neo }: InfoPanelProps) {
       await navigator.clipboard.writeText(snippet);
       setCopied(true);
       if (timeoutRef.current !== null) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => setCopied(false), INFO_PANEL_COPY_RESET_MS);
+      timeoutRef.current = setTimeout(
+        () => setCopied(false),
+        INFO_PANEL_COPY_RESET_MS,
+      );
     } catch {
       // clipboard unavailable — silently ignore
     }
