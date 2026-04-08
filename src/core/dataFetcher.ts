@@ -224,8 +224,8 @@ export function parseNeows(response: NeowsResponse): NeoData[] {
         id: asteroid.id,
         name: asteroid.name,
         diameterKm:
-          asteroid.estimated_diameter?.kilometers
-            ?.estimated_diameter_max ?? 0.1,
+          asteroid.estimated_diameter?.kilometers?.estimated_diameter_max ??
+          0.1,
         hazardous: asteroid.is_potentially_hazardous_asteroid,
         missDistKm,
         missDistLunar: parseFloat(approach.miss_distance.lunar),

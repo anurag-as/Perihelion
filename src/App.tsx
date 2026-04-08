@@ -148,24 +148,27 @@ export default function App() {
     [applyFilters],
   );
 
-  const onSearch = useCallback((query: string) => {
-    const index = indexRef.current;
-    const scene = sceneRef.current;
-    if (!index || !index.isReady() || !scene) return;
-    const trimmed = query.trim().toLowerCase();
-    if (!trimmed) {
-      // Empty query — restore normal filter state.
-      applyFilters(proximityRadiusRef.current, activeCategories);
-      return;
-    }
-    const all = index.getStore().getAll();
-    const match = all.find((n) => n.name.toLowerCase().includes(trimmed));
-    if (match) {
-      setSelectedNeo(match);
-      scene.selectNeo(match);
-      scene.flyToNeo(match);
-    }
-  }, [activeCategories, applyFilters]);
+  const onSearch = useCallback(
+    (query: string) => {
+      const index = indexRef.current;
+      const scene = sceneRef.current;
+      if (!index || !index.isReady() || !scene) return;
+      const trimmed = query.trim().toLowerCase();
+      if (!trimmed) {
+        // Empty query — restore normal filter state.
+        applyFilters(proximityRadiusRef.current, activeCategories);
+        return;
+      }
+      const all = index.getStore().getAll();
+      const match = all.find((n) => n.name.toLowerCase().includes(trimmed));
+      if (match) {
+        setSelectedNeo(match);
+        scene.selectNeo(match);
+        scene.flyToNeo(match);
+      }
+    },
+    [activeCategories, applyFilters],
+  );
 
   const onSceneClick = useCallback((worldPoint: import("three").Vector3) => {
     const index = indexRef.current;

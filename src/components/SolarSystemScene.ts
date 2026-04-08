@@ -335,8 +335,8 @@ export class SolarSystemScene {
     );
 
     // Place camera near Earth's current position so NEOs are immediately visible.
-    const [ex, ey, ez] = earthPositionAU(new Date());
-    const earthPos = new THREE.Vector3(ex, ey, ez);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [ex, _ey, ez] = earthPositionAU(new Date());
     this.camera.position.set(
       ex + CAMERA_INITIAL_Y,
       CAMERA_INITIAL_Y,
@@ -618,9 +618,9 @@ export class SolarSystemScene {
     // Sync hazard diamond visibility by updating the alpha attribute in-place
     // rather than rebuilding geometry on every highlight call.
     if (this.hazardPoints) {
-      const hazardAlpha = this.hazardPoints.geometry.getAttribute(
-        "alpha",
-      ) as THREE.BufferAttribute | undefined;
+      const hazardAlpha = this.hazardPoints.geometry.getAttribute("alpha") as
+        | THREE.BufferAttribute
+        | undefined;
       if (hazardAlpha) {
         let hi = 0;
         for (let i = 0; i < this._displayNeos.length; i++) {

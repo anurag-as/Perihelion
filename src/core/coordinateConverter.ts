@@ -68,7 +68,9 @@ export function neoPosition(
   const [ex, , ez] = earthPos;
   const earthMag = Math.sqrt(ex * ex + ez * ez);
   if (earthMag < 1e-10) {
-    throw new Error(`neoPosition: degenerate Earth position (earthMag=${earthMag})`);
+    throw new Error(
+      `neoPosition: degenerate Earth position (earthMag=${earthMag})`,
+    );
   }
   const radialX = ex / earthMag;
   const radialZ = ez / earthMag;
