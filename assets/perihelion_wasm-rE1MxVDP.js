@@ -30,8 +30,8 @@ class w {
   }
   range_query(t, s, i, r) {
     const a = n.wasmbonsaiindex_range_query(this.__wbg_ptr, t, s, i, r);
-    var l = f(a[0], a[1]).slice();
-    return n.__wbindgen_free(a[0], a[1] * 8, 8), l;
+    var g = f(a[0], a[1]).slice();
+    return n.__wbindgen_free(a[0], a[1] * 8, 8), g;
   }
   stats() {
     const t = n.wasmbonsaiindex_stats(this.__wbg_ptr);
@@ -73,7 +73,7 @@ function x(e, t) {
   return b += t, b >= h && (_ = new TextDecoder("utf-8", { ignoreBOM: true, fatal: true }), _.decode(), b = t), _.decode(m().subarray(e, e + t));
 }
 let n;
-function g(e, t) {
+function l(e, t) {
   return n = e.exports, o = null, c = null, n.__wbindgen_start(), n;
 }
 async function A(e, t) {
@@ -106,15 +106,15 @@ function W(e) {
   const t = y();
   e instanceof WebAssembly.Module || (e = new WebAssembly.Module(e));
   const s = new WebAssembly.Instance(e, t);
-  return g(s);
+  return l(s);
 }
 async function R(e) {
   if (n !== void 0) return n;
-  e !== void 0 && (Object.getPrototypeOf(e) === Object.prototype ? { module_or_path: e } = e : console.warn("using deprecated parameters for the initialization function; pass a single object instead")), e === void 0 && (e = new URL("/assets/perihelion_wasm_bg-Btr6VAcP.wasm", import.meta.url));
+  e !== void 0 && (Object.getPrototypeOf(e) === Object.prototype ? { module_or_path: e } = e : console.warn("using deprecated parameters for the initialization function; pass a single object instead")), e === void 0 && (e = new URL("/Perihelion/assets/perihelion_wasm_bg-Btr6VAcP.wasm", import.meta.url));
   const t = y();
   (typeof e == "string" || typeof Request == "function" && e instanceof Request || typeof URL == "function" && e instanceof URL) && (e = fetch(e));
   const { instance: s, module: i } = await A(await e, t);
-  return g(s);
+  return l(s);
 }
 export {
   w as WasmBonsaiIndex,

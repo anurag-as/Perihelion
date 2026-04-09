@@ -8065,7 +8065,7 @@ index.knnQuery([${t.toFixed(6)}, ${n.toFixed(6)}, ${r.toFixed(6)}], 1);`;
     }
   }
   const u0 = "modulepreload", a0 = function(e) {
-    return "/" + e;
+    return "/Perihelion/" + e;
   }, Ku = {}, c0 = function(t, n, r) {
     let l = Promise.resolve();
     if (n && n.length > 0) {
@@ -8145,7 +8145,7 @@ index.knnQuery([${t.toFixed(6)}, ${n.toFixed(6)}, ${r.toFixed(6)}], 1);`;
     async init() {
       if (!this.ready) {
         if (!Mo) {
-          const t = await c0(() => import("./perihelion_wasm-DXDD3Eri.js"), []);
+          const t = await c0(() => import("./perihelion_wasm-rE1MxVDP.js"), []);
           Mo = t.default, Yu = t.WasmBonsaiIndex;
         }
         await Mo(), this.index = new Yu(), this.ready = true;
