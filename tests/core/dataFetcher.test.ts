@@ -98,6 +98,25 @@ describe("fetchNeows", () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
+  it("fetches chunks sequentially, not in parallel", async () => {
+    const start = new Date("2025-01-01");
+    const end = new Date("2025-01-21"); // 20 days → 3 chunks
+
+    const callOrder: number[] = [];
+    let callIndex = 0;
+
+    mockFetch(() => {
+      const i = ++callIndex;
+      callOrder.push(i);
+      return { status: 200, body: makeNeowsResponse([`2025-01-0${i}`]) };
+    });
+
+    await fetchNeows(start, end);
+
+    // Chunks must be fetched in order 1, 2, 3 — not concurrently
+    expect(callOrder).toEqual([1, 2, 3]);
+  });
+
   it("does not include api_key in the request URL (key is injected by the proxy)", async () => {
     const spy = mockFetch(() => ({
       status: 200,
