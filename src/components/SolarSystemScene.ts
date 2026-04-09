@@ -293,6 +293,9 @@ export class SolarSystemScene {
   private flyControlsTarget: THREE.Vector3 | null = null;
   private flyFramesLeft = 0;
 
+  private flashFramesLeft = 0;
+  private flashOverlay: THREE.Mesh | null = null;
+
   get currentNeos(): NeoData[] {
     return this._currentNeos;
   }
@@ -467,10 +470,53 @@ export class SolarSystemScene {
       this.animFrameId = requestAnimationFrame(animate);
       this.tickSelectedPulse();
       this.tickFlyTo();
+      this.tickFlash();
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
     };
     animate();
+  }
+
+  flashMigration(): void {
+    const FLASH_FRAMES = 30;
+    const FLASH_OPACITY = 0.35;
+
+    if (!this.flashOverlay) {
+      const geo = new THREE.PlaneGeometry(2, 2);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x00ffcc,
+        transparent: true,
+        opacity: FLASH_OPACITY,
+        depthTest: false,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      // Render in screen space by attaching to the camera.
+      mesh.renderOrder = 999;
+      this.camera.add(mesh);
+      mesh.position.set(0, 0, -0.1);
+      this.flashOverlay = mesh;
+      // Ensure the camera is part of the scene so its children render.
+      if (!this.scene.getObjectById(this.camera.id)) {
+        this.scene.add(this.camera);
+      }
+    }
+
+    (this.flashOverlay.material as THREE.MeshBasicMaterial).opacity =
+      FLASH_OPACITY;
+    this.flashOverlay.visible = true;
+    this.flashFramesLeft = FLASH_FRAMES;
+  }
+
+  private tickFlash(): void {
+    if (!this.flashOverlay || this.flashFramesLeft <= 0) return;
+    this.flashFramesLeft--;
+    const mat = this.flashOverlay.material as THREE.MeshBasicMaterial;
+    // Fade out linearly over the remaining frames.
+    mat.opacity = 0.35 * (this.flashFramesLeft / 30);
+    if (this.flashFramesLeft === 0) {
+      this.flashOverlay.visible = false;
+    }
   }
 
   private tickSelectedPulse(): void {
@@ -760,6 +806,13 @@ export class SolarSystemScene {
     this.flyTarget = null;
     this.flyControlsTarget = null;
     this.flyFramesLeft = 0;
+
+    if (this.flashOverlay) {
+      this.flashOverlay.geometry.dispose();
+      (this.flashOverlay.material as THREE.Material).dispose();
+      this.flashOverlay = null;
+    }
+    this.flashFramesLeft = 0;
   }
 
   private disposeNeoPoints(): void {

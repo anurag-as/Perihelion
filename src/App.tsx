@@ -79,6 +79,7 @@ export default function App() {
   const raycasterRef = useRef<NeoRaycaster | null>(null);
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
   const [indexManager] = useState(() => new IndexManager());
+  const [scene, setScene] = useState<SolarSystemScene | null>(null);
   const proximityRadiusRef = useRef(DEFAULT_RADIUS_AU);
   const [proximityRadius, setProximityRadius] = useState(DEFAULT_RADIUS_AU);
   const [proximityCount, setProximityCount] = useState(0);
@@ -192,6 +193,7 @@ export default function App() {
     const scene = new SolarSystemScene();
     sceneRef.current = scene;
     scene.init(containerRef.current);
+    setScene(scene);
 
     const index = indexManager;
     indexRef.current = index;
@@ -282,6 +284,7 @@ export default function App() {
       container.removeEventListener("mousemove", handleMove);
       scene.dispose();
       sceneRef.current = null;
+      setScene(null);
       indexRef.current = null;
       raycasterRef.current = null;
     };
@@ -307,7 +310,7 @@ export default function App() {
         />
       </div>
       <div className="absolute bottom-4 right-4">
-        <StatsPanel indexManager={indexManager} />
+        <StatsPanel indexManager={indexManager} scene={scene} />
       </div>
     </div>
   );
