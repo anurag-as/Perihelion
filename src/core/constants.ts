@@ -293,8 +293,11 @@ export const DIAMOND_STROKE_COLOUR = "#FF4422";
 export const CACHE_TTL_MS = 3_600_000;
 export const MAX_NEOWS_DAYS = 7;
 export const JPL_CAD_DIST_MAX = 0.2;
-export const NASA_NEOWS_BASE = "https://api.nasa.gov/neo/rest/v1/feed";
-export const JPL_CAD_PROD_BASE = "https://orange-waterfall-4401.sampathanurag3.workers.dev";
+export const WORKER_BASE = "https://orange-waterfall-4401.sampathanurag3.workers.dev";
+export const NASA_NEOWS_BASE = import.meta.env.DEV
+  ? "https://api.nasa.gov/neo/rest/v1/feed"
+  : `${WORKER_BASE}/neo/rest/v1/feed`;
+export const JPL_CAD_PROD_BASE = WORKER_BASE;
 export const JPL_CAD_DEV_PROXY = "/api/jpl";
 export const SNAPSHOT_PATH = `${import.meta.env.BASE_URL}neo_snapshot.json`;
 
