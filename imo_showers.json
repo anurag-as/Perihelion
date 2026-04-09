@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Quadrantids",
+    "peak": "Jan 03",
+    "raDeg": 230.1,
+    "decDeg": 48.5,
+    "zhr": 120,
+    "velocityKmS": 41.0,
+    "parent": "2003 EH1"
+  },
+  {
+    "name": "Lyrids",
+    "peak": "Apr 22",
+    "raDeg": 271.4,
+    "decDeg": 33.6,
+    "zhr": 18,
+    "velocityKmS": 49.0,
+    "parent": "C/1861 G1 Thatcher"
+  },
+  {
+    "name": "Eta Aquariids",
+    "peak": "May 06",
+    "raDeg": 338.0,
+    "decDeg": -1.0,
+    "zhr": 50,
+    "velocityKmS": 66.0,
+    "parent": "1P/Halley"
+  },
+  {
+    "name": "Perseids",
+    "peak": "Aug 12",
+    "raDeg": 48.2,
+    "decDeg": 58.1,
+    "zhr": 100,
+    "velocityKmS": 59.0,
+    "parent": "109P/Swift-Tuttle"
+  },
+  {
+    "name": "Orionids",
+    "peak": "Oct 21",
+    "raDeg": 95.0,
+    "decDeg": 15.8,
+    "zhr": 20,
+    "velocityKmS": 66.0,
+    "parent": "1P/Halley"
+  },
+  {
+    "name": "Taurids",
+    "peak": "Nov 05",
+    "raDeg": 52.0,
+    "decDeg": 14.0,
+    "zhr": 5,
+    "velocityKmS": 27.0,
+    "parent": "2P/Encke"
+  },
+  {
+    "name": "Leonids",
+    "peak": "Nov 17",
+    "raDeg": 152.3,
+    "decDeg": 22.2,
+    "zhr": 15,
+    "velocityKmS": 71.0,
+    "parent": "55P/Tempel-Tuttle"
+  },
+  {
+    "name": "Geminids",
+    "peak": "Dec 14",
+    "raDeg": 112.3,
+    "decDeg": 32.5,
+    "zhr": 150,
+    "velocityKmS": 35.0,
+    "parent": "3200 Phaethon"
+  }
+]
