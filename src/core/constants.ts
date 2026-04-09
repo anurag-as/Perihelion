@@ -294,9 +294,9 @@ export const CACHE_TTL_MS = 3_600_000;
 export const MAX_NEOWS_DAYS = 7;
 export const JPL_CAD_DIST_MAX = 0.2;
 export const NASA_NEOWS_BASE = "https://api.nasa.gov/neo/rest/v1/feed";
-export const JPL_CAD_PROD_BASE = "https://ssd-api.jpl.nasa.gov";
+export const JPL_CAD_PROD_BASE = "https://orange-waterfall-4401.sampathanurag3.workers.dev";
 export const JPL_CAD_DEV_PROXY = "/api/jpl";
-export const SNAPSHOT_PATH = "/neo_snapshot.json";
+export const SNAPSHOT_PATH = `${import.meta.env.BASE_URL}neo_snapshot.json`;
 
 export const FETCH_TIMEOUT_MS = 10_000;
 export const FETCH_LOOKAHEAD_DAYS = 30;
