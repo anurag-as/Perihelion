@@ -1,10 +1,20 @@
 import { useState } from "react";
-import { KM_PER_AU, NEO_LEGEND_ENTRIES, PROXIMITY_CLOSE_AU, PROXIMITY_MID_AU } from "../core/constants";
+import {
+  KM_PER_AU,
+  NEO_LEGEND_ENTRIES,
+  PROXIMITY_CLOSE_AU,
+  PROXIMITY_MID_AU,
+} from "../core/constants";
 import type { LayerType, NeoCategory, NeoData } from "../core/types";
 
 export type { NeoCategory };
 
-export const ALL_CATEGORIES: NeoCategory[] = ["hazardous", "close005", "close010", "far"];
+export const ALL_CATEGORIES: NeoCategory[] = [
+  "hazardous",
+  "close005",
+  "close010",
+  "far",
+];
 
 export function neoCategory(neo: NeoData): NeoCategory {
   if (neo.hazardous) return "hazardous";
@@ -32,7 +42,12 @@ const LAYER_ENTRIES: LayerEntry[] = [
   { layer: "planets", label: "Planets", defaultOn: true },
   { layer: "meteors", label: "Meteor showers", defaultOn: true },
   { layer: "trajectories", label: "Trajectories", defaultOn: false },
-  { layer: "hazardOnly", label: "Hazardous only", isHazardFilter: true, defaultOn: false },
+  {
+    layer: "hazardOnly",
+    label: "Hazardous only",
+    isHazardFilter: true,
+    defaultOn: false,
+  },
 ];
 
 export default function SceneControls({
@@ -66,7 +81,9 @@ export default function SceneControls({
   return (
     <div className="bg-black/60 text-white rounded-lg px-3 py-2 min-w-[200px]">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Controls</span>
+        <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">
+          Controls
+        </span>
         <button
           onClick={() => setCollapsed(true)}
           className="text-gray-400 hover:text-white text-xs ml-4"
@@ -77,10 +94,15 @@ export default function SceneControls({
       </div>
 
       {/* Scene layers */}
-      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Show</p>
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+        Show
+      </p>
       <div className="flex flex-col gap-1 mb-3">
         {LAYER_ENTRIES.map((entry) => (
-          <label key={entry.layer} className="flex items-center gap-2 cursor-pointer select-none">
+          <label
+            key={entry.layer}
+            className="flex items-center gap-2 cursor-pointer select-none"
+          >
             <input
               type="checkbox"
               defaultChecked={entry.defaultOn}
@@ -94,7 +116,9 @@ export default function SceneControls({
       </div>
 
       {/* NEO category filters */}
-      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Highlight by type</p>
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+        Highlight by type
+      </p>
       <div className="flex flex-col gap-0.5">
         {NEO_LEGEND_ENTRIES.map(({ category, color, label }) => {
           const active = activeCategories.has(category);

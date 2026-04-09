@@ -130,8 +130,11 @@ function drawAsteroidCell(
 
   const verts: [number, number][] = [];
   for (let i = 0; i < ASTEROID_SHAPE_POINTS; i++) {
-    const r = baseR * (ASTEROID_SHAPE_RADIUS_MIN + rand() * ASTEROID_SHAPE_RADIUS_JITTER);
-    const angle = i * angleStep + (rand() - 0.5) * angleStep * ASTEROID_SHAPE_ANGLE_JITTER;
+    const r =
+      baseR *
+      (ASTEROID_SHAPE_RADIUS_MIN + rand() * ASTEROID_SHAPE_RADIUS_JITTER);
+    const angle =
+      i * angleStep + (rand() - 0.5) * angleStep * ASTEROID_SHAPE_ANGLE_JITTER;
     verts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
   }
 
@@ -533,7 +536,8 @@ export class SolarSystemScene {
       const pts: [number, number, number][] = [];
       for (let i = 0; i < TRAJECTORY_ARC_POINTS; i++) {
         const t = i / (TRAJECTORY_ARC_POINTS - 1);
-        const daysFromNow = -TRAJECTORY_ARC_HALF_DAYS + t * 2 * TRAJECTORY_ARC_HALF_DAYS;
+        const daysFromNow =
+          -TRAJECTORY_ARC_HALF_DAYS + t * 2 * TRAJECTORY_ARC_HALF_DAYS;
         try {
           pts.push(
             neoPosition(
@@ -594,10 +598,16 @@ export class SolarSystemScene {
       const pz = uz * METEOR_RADIANT_DISTANCE_AU;
 
       const intensity = Math.min(shower.zhr / METEOR_MAX_ZHR, 1.0);
-      const coneHeight = METEOR_CONE_HEIGHT_MIN + intensity * METEOR_CONE_HEIGHT_RANGE;
-      const coneRadius = METEOR_CONE_RADIUS_MIN + intensity * METEOR_CONE_RADIUS_RANGE;
+      const coneHeight =
+        METEOR_CONE_HEIGHT_MIN + intensity * METEOR_CONE_HEIGHT_RANGE;
+      const coneRadius =
+        METEOR_CONE_RADIUS_MIN + intensity * METEOR_CONE_RADIUS_RANGE;
 
-      const geo = new THREE.ConeGeometry(coneRadius, coneHeight, METEOR_CONE_SEGMENTS);
+      const geo = new THREE.ConeGeometry(
+        coneRadius,
+        coneHeight,
+        METEOR_CONE_SEGMENTS,
+      );
 
       const r = intensity;
       const g = intensity * 0.5;

@@ -7,12 +7,14 @@ interface TimeScrubberProps {
   date: Date;
   onChange: (date: Date) => void;
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export default function TimeScrubber({
   date,
   onChange,
   isLoading = false,
+  disabled = false,
 }: TimeScrubberProps) {
   // Stable reference to "today at midnight" — recomputed only once per mount.
   const todayRef = useRef<Date | null>(null);
@@ -41,7 +43,9 @@ export default function TimeScrubber({
         : `${offsetDays}d`;
 
   return (
-    <div className="flex flex-col gap-1 bg-black/60 text-white rounded-lg px-3 py-2 min-w-[180px]">
+    <div
+      className={`flex flex-col gap-1 bg-black/60 text-white rounded-lg px-3 py-2 min-w-[180px] ${disabled ? "opacity-40" : ""}`}
+    >
       <div className="flex justify-between text-xs text-gray-300">
         <span>Time</span>
         <span className="flex items-center gap-1">
@@ -63,9 +67,10 @@ export default function TimeScrubber({
         step={1}
         value={offsetDays}
         onChange={handleChange}
-        className="w-full accent-[#00FF88]"
+        className="w-full accent-[#00FF88] disabled:cursor-not-allowed"
         aria-label="Time offset in days from today (±30 days)"
-        disabled={isLoading}
+        disabled={isLoading || disabled}
+        aria-disabled={disabled}
       />
       <div className="text-xs text-gray-400 flex justify-between">
         <span>−{SCRUBBER_DAYS}d</span>

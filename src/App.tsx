@@ -14,6 +14,7 @@ import SceneControls, {
 import SearchBar from "./components/SearchBar";
 import StatsPanel from "./components/StatsPanel";
 import TimeScrubber from "./components/TimeScrubber";
+import WasmErrorOverlay from "./components/WasmErrorOverlay";
 import {
   loadSnapshot,
   parseNeows,
@@ -82,6 +83,7 @@ export default function App() {
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
   const [indexManager] = useState(() => new IndexManager());
   const [scene, setScene] = useState<SolarSystemScene | null>(null);
+  const [wasmError, setWasmError] = useState(false);
   const proximityRadiusRef = useRef(DEFAULT_RADIUS_AU);
   const [proximityRadius, setProximityRadius] = useState(DEFAULT_RADIUS_AU);
   const [proximityCount, setProximityCount] = useState(0);
@@ -266,6 +268,40 @@ export default function App() {
     sceneRef.current?.setLayerVisible("hazardOnly", enabled);
   }, []);
 
+  // Re-attempt WASM init after a previous failure.
+  const handleWasmRetry = useCallback(async () => {
+    const index = indexRef.current;
+    const scene = sceneRef.current;
+    if (!index || !scene) return;
+    try {
+      await index.init();
+      setWasmError(false);
+      const neos = index.getStore().getAll();
+      index.rebuild(neos);
+      const enrichedNeos = index.getStore().getAll();
+      scene.updateNeoPoints(enrichedNeos);
+      setSelectedNeo(null);
+      const raycaster = raycasterRef.current;
+      if (raycaster) {
+        raycaster.setCamera(scene.getCamera());
+        const pts = scene.getNeoPoints();
+        if (pts) raycaster.setNeoPoints(pts, scene.displayNeos);
+      }
+      const earthPos = earthPositionAU(new Date());
+      const initMatches = index.rangeQuery(earthPos, DEFAULT_RADIUS_AU);
+      const initIds = new Set(
+        initMatches
+          .map((n) => n.bonsaiId)
+          .filter((id): id is bigint => id !== undefined),
+      );
+      scene.highlightNeos(initIds);
+      setProximityCount(initMatches.length);
+    } catch (e) {
+      console.error("WASM retry failed:", e);
+      setWasmError(true);
+    }
+  }, []);
+
   const onSceneClick = useCallback((worldPoint: import("three").Vector3) => {
     const index = indexRef.current;
     const scene = sceneRef.current;
@@ -348,6 +384,7 @@ export default function App() {
       try {
         await index.init();
         if (cancelled) return;
+        setWasmError(false);
         index.rebuild(neos);
         // Re-render with bonsaiId-enriched NEOs from the index so highlightNeos
         // can correctly match by id.
@@ -369,6 +406,7 @@ export default function App() {
       } catch (e) {
         console.error("WASM init/rebuild failed:", e);
         // WASM unavailable — scene still renders without query features
+        setWasmError(true);
       }
     }
 
@@ -390,6 +428,7 @@ export default function App() {
     <div className="relative w-screen h-screen bg-[#000008] overflow-hidden">
       <CachedDataBanner status={fetchStatus} />
       <div ref={containerRef} className="w-full h-full" />
+      {wasmError && <WasmErrorOverlay onRetry={handleWasmRetry} />}
       {scrubberLoading && (
         <div
           className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none"
@@ -409,16 +448,18 @@ export default function App() {
         <InfoPanel neo={selectedNeo} />
       </div>
       <div className="absolute bottom-4 left-4 flex flex-col gap-2 items-start">
-        <SearchBar onSearch={onSearch} />
+        <SearchBar onSearch={onSearch} disabled={wasmError} />
         <TimeScrubber
           date={scrubberDate}
           onChange={onTimeChange}
           isLoading={scrubberLoading}
+          disabled={wasmError}
         />
         <ProximitySlider
           radiusAU={proximityRadius}
           matchCount={proximityCount}
           onChange={onProximityChange}
+          disabled={wasmError}
         />
       </div>
       <div className="absolute bottom-4 right-4">

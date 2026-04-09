@@ -2,9 +2,13 @@ import { useRef, type ChangeEvent } from "react";
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
+  disabled?: boolean;
 }
 
-export default function SearchBar({ onSearch }: SearchBarProps) {
+export default function SearchBar({
+  onSearch,
+  disabled = false,
+}: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
@@ -12,14 +16,18 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
   }
 
   return (
-    <div className="flex items-center bg-black/60 text-white rounded-lg px-3 py-2 min-w-[180px]">
+    <div
+      className={`flex items-center bg-black/60 text-white rounded-lg px-3 py-2 min-w-[180px] ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+    >
       <input
         ref={inputRef}
         type="text"
         placeholder="Search NEOs…"
         onChange={handleChange}
-        className="bg-transparent outline-none text-sm text-white placeholder-gray-500 w-full"
+        disabled={disabled}
+        className="bg-transparent outline-none text-sm text-white placeholder-gray-500 w-full disabled:cursor-not-allowed"
         aria-label="Search NEOs by name"
+        aria-disabled={disabled}
       />
     </div>
   );
