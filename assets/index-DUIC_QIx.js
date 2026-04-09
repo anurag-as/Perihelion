@@ -7969,14 +7969,14 @@ index.knnQuery([${t.toFixed(6)}, ${n.toFixed(6)}, ${r.toFixed(6)}], 1);`;
     const r = [];
     let l = e;
     for (; l.getTime() <= t.getTime(); ) {
-      const s = Wu(l, $u - 1), u = s < t ? s : t;
-      r.push(Qu(l, u)), l = Wu(u, 1);
+      const i = Wu(l, $u - 1), s = i < t ? i : t;
+      r.push(await Qu(l, s)), l = Wu(s, 1);
     }
-    const o = await Promise.all(r), i = {
+    const o = {
       near_earth_objects: {}
     };
-    for (const s of o) Object.assign(i.near_earth_objects, s.near_earth_objects);
-    return i;
+    for (const i of r) Object.assign(o.near_earth_objects, i.near_earth_objects);
+    return o;
   }
   async function kf(e, t) {
     const n = `cad:${wt(e)}:${wt(t)}`, r = _f(n);
