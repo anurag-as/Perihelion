@@ -270,6 +270,10 @@ export class NasaDataFetcher implements DataFetcher {
       ]);
       this.onStatusChange?.("live");
     } catch (err) {
+      console.warn(
+        "fetchAndIndex: API fetch failed, falling back to snapshot:",
+        err,
+      );
       if ((err as Error & { status?: number }).status === 429) {
         isRateLimited = true;
       }
@@ -277,7 +281,11 @@ export class NasaDataFetcher implements DataFetcher {
       try {
         await loadSnapshot();
         this.onStatusChange?.(isRateLimited ? "rate-limited" : "snapshot");
-      } catch {
+      } catch (snapshotErr) {
+        console.warn(
+          "fetchAndIndex: snapshot fallback also failed:",
+          snapshotErr,
+        );
         this.onStatusChange?.("snapshot");
       }
     }

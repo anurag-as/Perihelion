@@ -418,8 +418,17 @@ export default function App() {
 
     loadData();
 
+    // Re-fetch every 60 minutes to keep NEO data current.
+    const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+    const refreshTimer = setInterval(() => {
+      loadData().catch((err) => {
+        console.warn("Auto-refresh failed:", err);
+      });
+    }, REFRESH_INTERVAL_MS);
+
     return () => {
       cancelled = true;
+      clearInterval(refreshTimer);
       container.removeEventListener("click", handleClick);
       container.removeEventListener("mousemove", handleMove);
       scene.dispose();
