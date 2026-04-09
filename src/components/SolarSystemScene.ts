@@ -389,6 +389,7 @@ export class SolarSystemScene {
     this.addAmbientLight();
     this.addSun();
     this.addPlanets();
+    this.updatePlanetPositions(new Date());
     this.addMeteorGroup();
     this.addTrajectoryGroup();
 

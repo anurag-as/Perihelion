@@ -304,6 +304,9 @@ export const NEO_INCLINATION_MAX_DEG = 80;
 // Bonsai backend kind → display name and cost-model explanation
 // ---------------------------------------------------------------------------
 
+export const BONSAI_GITHUB_URL = "https://github.com/anurag-as/Bonsai";
+export const BONSAI_TOAST_DURATION_MS = 3_000;
+
 export const BONSAI_BACKEND_NAMES: Record<number, string> = {
   0: "R-tree",
   1: "KD-tree",

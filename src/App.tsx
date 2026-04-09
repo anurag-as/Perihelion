@@ -32,7 +32,7 @@ import {
   NEO_INCLINATION_MAX_DEG,
   DEG2RAD,
 } from "./core/constants";
-import type { NeoData, LayerType } from "./core/types";
+import type { NeoData, LayerType, QueryState } from "./core/types";
 
 const DEFAULT_RADIUS_AU = PROXIMITY_MAX_AU / 2;
 
@@ -100,6 +100,12 @@ export default function App() {
     return d;
   });
   const [scrubberLoading, setScrubberLoading] = useState(false);
+  const [currentQuery, setCurrentQuery] = useState<QueryState>(() => ({
+    type: "range",
+    centre: [0, 1, 0],
+    radiusAU: DEFAULT_RADIUS_AU,
+    timestamp: new Date(),
+  }));
   const scrubberAbortRef = useRef<AbortController | null>(null);
   const scrubberDateRef = useRef<Date>(
     (() => {
@@ -152,6 +158,13 @@ export default function App() {
       proximityRadiusRef.current = radiusAU;
       setProximityRadius(radiusAU);
       applyFilters(radiusAU, activeCategories);
+      const earthPos = earthPositionAU(scrubberDateRef.current ?? new Date());
+      setCurrentQuery({
+        type: "range",
+        centre: earthPos,
+        radiusAU,
+        timestamp: new Date(),
+      });
     },
     [activeCategories, applyFilters],
   );
@@ -318,6 +331,12 @@ export default function App() {
     if (nearest.length > 0) {
       setSelectedNeo(nearest[0]);
       scene.selectNeo(nearest[0]);
+      setCurrentQuery({
+        type: "knn",
+        centre: [worldPoint.x, worldPoint.y, worldPoint.z],
+        k: 1,
+        timestamp: new Date(),
+      });
     }
   }, []);
 
@@ -454,12 +473,6 @@ export default function App() {
         </div>
       )}
       <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-        <SceneControls
-          activeCategories={activeCategories}
-          onCategoryToggle={onCategoryToggle}
-          onLayerToggle={onLayerToggle}
-          onHazardFilter={onHazardFilter}
-        />
         <InfoPanel neo={selectedNeo} />
       </div>
       <div className="absolute bottom-4 left-4 flex flex-col gap-2 items-start">
@@ -476,9 +489,15 @@ export default function App() {
           onChange={onProximityChange}
           disabled={wasmError}
         />
+        <SceneControls
+          activeCategories={activeCategories}
+          onCategoryToggle={onCategoryToggle}
+          onLayerToggle={onLayerToggle}
+          onHazardFilter={onHazardFilter}
+        />
       </div>
-      <div className="absolute bottom-4 right-4">
-        <StatsPanel indexManager={indexManager} scene={scene} />
+      <div className="absolute bottom-4 right-4 flex flex-col gap-2 items-end">
+        <StatsPanel indexManager={indexManager} scene={scene} currentQuery={currentQuery} />
       </div>
     </div>
   );

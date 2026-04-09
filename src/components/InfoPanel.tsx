@@ -29,6 +29,15 @@ export default function InfoPanel({ neo }: InfoPanelProps) {
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Reset copied state when a different NEO is selected.
+  useEffect(() => {
+    setCopied(false);
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, [neo]);
+
   useEffect(() => {
     return () => {
       if (timeoutRef.current !== null) clearTimeout(timeoutRef.current);
@@ -56,6 +65,7 @@ export default function InfoPanel({ neo }: InfoPanelProps) {
 
   return (
     <div className="bg-black/80 border border-white/10 text-white text-sm rounded-lg p-4 w-64 flex flex-col gap-2">
+      <span className="text-gray-400 text-xs uppercase tracking-wide">NEO Info</span>
       <div className="flex items-start justify-between gap-2">
         <span className="font-semibold text-base leading-tight truncate">
           {neo.name}
