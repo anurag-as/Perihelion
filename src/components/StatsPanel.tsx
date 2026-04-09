@@ -192,7 +192,7 @@ export default function StatsPanel({
             </div>
           </div>
 
-          <pre className="bg-black/60 rounded p-2 text-[10px] leading-relaxed text-gray-200 overflow-x-auto whitespace-pre">
+          <pre className="bg-black/60 rounded p-2 text-[10px] leading-relaxed text-gray-200 overflow-x-auto whitespace-pre min-h-[80px]">
             {snippet}
           </pre>
 
