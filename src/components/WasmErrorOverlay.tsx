@@ -5,7 +5,7 @@ interface WasmErrorOverlayProps {
 export default function WasmErrorOverlay({ onRetry }: WasmErrorOverlayProps) {
   return (
     <div
-      className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-black/80 border border-yellow-500/60 text-white rounded-lg px-4 py-3 max-w-sm w-full mx-4 flex flex-col gap-2"
+      className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/80 border border-yellow-500/60 text-white rounded-lg px-4 py-3 max-w-sm w-full mx-4 flex flex-col gap-2"
       role="alert"
       aria-live="assertive"
     >

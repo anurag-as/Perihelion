@@ -78,6 +78,9 @@ function enrichPositions(neos: NeoData[], referenceDate?: Date): NeoData[] {
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SolarSystemScene | null>(null);
+  // Holds the last successfully fetched NEO list so the retry handler can
+  // rebuild the index without re-fetching.
+  const lastNeosRef = useRef<NeoData[]>([]);
   const indexRef = useRef<IndexManager | null>(null);
   const raycasterRef = useRef<NeoRaycaster | null>(null);
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
@@ -276,7 +279,9 @@ export default function App() {
     try {
       await index.init();
       setWasmError(false);
-      const neos = index.getStore().getAll();
+      // Use the last fetched NEOs — the store is empty because init() failed
+      // previously, so we cannot rely on index.getStore().getAll().
+      const neos = lastNeosRef.current;
       index.rebuild(neos);
       const enrichedNeos = index.getStore().getAll();
       scene.updateNeoPoints(enrichedNeos);
@@ -377,6 +382,7 @@ export default function App() {
 
       scene.updateNeoPoints(neos);
       scene.updatePlanetPositions(new Date());
+      lastNeosRef.current = neos;
 
       const fetcher = new NasaDataFetcher();
       scene.updateMeteorShowers(fetcher.loadMeteorShowers());
