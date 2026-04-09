@@ -377,12 +377,12 @@ export default function App() {
       let neos: NeoData[] = [];
 
       try {
-        const [response] = await Promise.all([
-          fetchNeows(today, end),
-          fetchCad(today, end),
-        ]);
+        const response = await fetchNeows(today, end);
         neos = enrichPositions(parseNeows(response), today);
         setFetchStatus("live");
+        fetchCad(today, end).catch((err) =>
+          console.warn("CAD fetch failed (non-critical):", err),
+        );
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
         try {

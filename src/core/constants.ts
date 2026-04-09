@@ -302,7 +302,7 @@ export const JPL_CAD_PROD_BASE = WORKER_BASE;
 export const JPL_CAD_DEV_PROXY = "/api/jpl";
 export const SNAPSHOT_PATH = `${import.meta.env.BASE_URL}neo_snapshot.json`;
 
-export const FETCH_TIMEOUT_MS = 10_000;
+export const FETCH_TIMEOUT_MS = 30_000;
 export const FETCH_LOOKAHEAD_DAYS = 30;
 export const SCRUBBER_FETCH_WINDOW_DAYS = 30;
 
