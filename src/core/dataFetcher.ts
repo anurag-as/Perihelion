@@ -7,8 +7,6 @@ import {
   JPL_CAD_DIST_MAX,
   JPL_CAD_PROD_BASE,
   KM_PER_AU,
-  MAX_NEOWS_DAYS,
-  MS_PER_DAY,
   NASA_NEOWS_BASE,
   SNAPSHOT_PATH,
 } from "./constants";
@@ -66,16 +64,6 @@ function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date.getTime());
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
-}
-
-function daysBetween(a: Date, b: Date): number {
-  return Math.round((b.getTime() - a.getTime()) / MS_PER_DAY);
-}
-
 async function safeFetch(url: string): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -125,7 +113,7 @@ function cacheSet<T>(key: string, data: T): void {
   } catch {}
 }
 
-async function fetchNeowsChunk(
+export async function fetchNeows(
   startDate: Date,
   endDate: Date,
 ): Promise<NeowsResponse> {
@@ -138,33 +126,6 @@ async function fetchNeowsChunk(
   const data = (await res.json()) as NeowsResponse;
   cacheSet(cacheKey, data);
   return data;
-}
-
-export async function fetchNeows(
-  startDate: Date,
-  endDate: Date,
-): Promise<NeowsResponse> {
-  const totalDays = daysBetween(startDate, endDate);
-
-  if (totalDays <= MAX_NEOWS_DAYS) {
-    return fetchNeowsChunk(startDate, endDate);
-  }
-
-  // Split into 7-day inclusive chunks and merge near_earth_objects.
-  // Use date comparison rather than daysBetween to avoid rounding edge cases.
-  const results: NeowsResponse[] = [];
-  let chunkStart = startDate;
-  while (chunkStart.getTime() <= endDate.getTime()) {
-    const chunkEnd = addDays(chunkStart, MAX_NEOWS_DAYS - 1);
-    const actualEnd = chunkEnd < endDate ? chunkEnd : endDate;
-    results.push(await fetchNeowsChunk(chunkStart, actualEnd));
-    chunkStart = addDays(actualEnd, 1);
-  }
-  const merged: NeowsResponse = { near_earth_objects: {} };
-  for (const r of results) {
-    Object.assign(merged.near_earth_objects, r.near_earth_objects);
-  }
-  return merged;
 }
 
 export async function fetchCad(

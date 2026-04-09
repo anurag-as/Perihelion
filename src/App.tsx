@@ -82,6 +82,7 @@ export default function App() {
   const indexRef = useRef<IndexManager | null>(null);
   const raycasterRef = useRef<NeoRaycaster | null>(null);
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
+  const initialLoadDoneRef = useRef(false);
   const [indexManager] = useState(() => new IndexManager());
   const [scene, setScene] = useState<SolarSystemScene | null>(null);
   const [wasmError, setWasmError] = useState(false);
@@ -210,6 +211,7 @@ export default function App() {
       const index = indexRef.current;
       const scene = sceneRef.current;
       if (!index || !index.isReady() || !scene) return;
+      if (!initialLoadDoneRef.current) return;
 
       // Cancel any in-flight time change.
       scrubberAbortRef.current?.abort();
@@ -383,6 +385,13 @@ export default function App() {
         ]);
         neos = enrichPositions(parseNeows(response), today);
         setFetchStatus("live");
+        initialLoadDoneRef.current = true;
+        // Fetch CAD after NeoWs completes to avoid concurrent worker requests
+        setTimeout(() => {
+          fetchCad(today, end).catch((err) =>
+            console.warn("CAD fetch failed (non-critical):", err),
+          );
+        }, 2000);
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
         try {
