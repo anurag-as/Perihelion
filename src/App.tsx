@@ -472,10 +472,16 @@ export default function App() {
           <span className="text-[#00FF88] text-4xl animate-spin">⟳</span>
         </div>
       )}
-      <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-        <InfoPanel neo={selectedNeo} />
+
+      {/* Top-right: InfoPanel — full-width overlay on mobile, fixed panel on desktop */}
+      <div className="absolute top-4 right-2 left-2 sm:left-auto sm:right-4 flex flex-col gap-2 items-stretch sm:items-end pointer-events-none">
+        <div className="pointer-events-auto">
+          <InfoPanel neo={selectedNeo} />
+        </div>
       </div>
-      <div className="absolute bottom-4 left-4 flex flex-col gap-2 items-start">
+
+      {/* Bottom-left: controls — full-width stacked on mobile, compact on desktop */}
+      <div className="absolute bottom-0 left-0 right-0 sm:bottom-4 sm:left-4 sm:right-auto flex flex-col gap-2 items-stretch sm:items-start p-2 sm:p-0 bg-black/60 sm:bg-transparent rounded-t-xl sm:rounded-none">
         <SearchBar onSearch={onSearch} disabled={wasmError} />
         <TimeScrubber
           date={scrubberDate}
@@ -496,8 +502,14 @@ export default function App() {
           onHazardFilter={onHazardFilter}
         />
       </div>
-      <div className="absolute bottom-4 right-4 flex flex-col gap-2 items-end">
-        <StatsPanel indexManager={indexManager} scene={scene} currentQuery={currentQuery} />
+
+      {/* Bottom-right: StatsPanel — hidden on mobile by default, visible on sm+ */}
+      <div className="hidden sm:flex absolute bottom-4 right-4 flex-col gap-2 items-end">
+        <StatsPanel
+          indexManager={indexManager}
+          scene={scene}
+          currentQuery={currentQuery}
+        />
       </div>
     </div>
   );

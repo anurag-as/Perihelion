@@ -62,7 +62,7 @@ export default function SceneControls({
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-lg"
+        className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-lg w-full sm:w-auto"
         aria-label="Open scene controls"
       >
         Controls
@@ -79,7 +79,7 @@ export default function SceneControls({
   }
 
   return (
-    <div className="bg-black/60 text-white rounded-lg px-3 py-2 min-w-[200px]">
+    <div className="bg-black/60 text-white rounded-lg px-3 py-2 w-full sm:min-w-[200px]">
       <div className="flex justify-between items-center mb-2">
         <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">
           Controls

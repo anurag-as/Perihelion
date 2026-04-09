@@ -118,7 +118,7 @@ export default function StatsPanel({
   return (
     <>
       <div
-        className="bg-black/80 border border-white/10 text-white text-xs rounded-lg w-72 flex flex-col overflow-hidden"
+        className="bg-black/80 border border-white/10 text-white text-xs rounded-lg w-full sm:w-72 flex flex-col overflow-hidden"
         aria-label="Bonsai index statistics and export"
       >
         <span className="sr-only" role="status" aria-live="polite">
@@ -170,7 +170,11 @@ export default function StatsPanel({
                 Bonsai query
               </span>
             </div>
-            <div className="flex gap-1" role="group" aria-label="Select language">
+            <div
+              className="flex gap-1"
+              role="group"
+              aria-label="Select language"
+            >
               {(["rust", "python", "js"] as Language[]).map((l) => (
                 <button
                   key={l}

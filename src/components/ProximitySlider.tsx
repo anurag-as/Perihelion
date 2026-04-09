@@ -26,7 +26,7 @@ export default function ProximitySlider({
 
   return (
     <div
-      className={`flex flex-col gap-1 bg-black/60 text-white rounded-lg px-3 py-2 min-w-[180px] ${disabled ? "opacity-40" : ""}`}
+      className={`flex flex-col gap-1 bg-black/60 text-white rounded-lg px-3 py-2 w-full sm:min-w-[180px] ${disabled ? "opacity-40" : ""}`}
     >
       <div className="flex justify-between text-xs text-gray-300">
         <span>Proximity</span>
