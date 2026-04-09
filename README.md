@@ -1,6 +1,6 @@
 # Perihelion — Near-Earth Object Tracker
 
-A browser-based 3D visualiser for asteroids, comets, and meteor shower radiants. Fetches live data from NASA's NeoWs and JPL Close Approach APIs, indexes objects spatially using [Bonsai](https://github.com/bonsai-index) compiled to WASM, and renders an interactive solar system scene with Three.js — entirely client-side, no server required.
+A browser-based 3D visualiser for asteroids, comets, and meteor shower radiants. Fetches live data from NASA's NeoWs and JPL Close Approach APIs, indexes objects spatially using [Bonsai](https://github.com/anurag-as/bonsai) compiled to WASM, and renders an interactive solar system scene with Three.js — entirely client-side, no server required.
 
 ## Prerequisites
 
