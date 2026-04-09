@@ -12,6 +12,7 @@ import NeoLegend, {
   type NeoCategory,
 } from "./components/NeoLegend";
 import SearchBar from "./components/SearchBar";
+import StatsPanel from "./components/StatsPanel";
 import {
   loadSnapshot,
   parseNeows,
@@ -77,6 +78,7 @@ export default function App() {
   const indexRef = useRef<IndexManager | null>(null);
   const raycasterRef = useRef<NeoRaycaster | null>(null);
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
+  const [indexManager] = useState(() => new IndexManager());
   const proximityRadiusRef = useRef(DEFAULT_RADIUS_AU);
   const [proximityRadius, setProximityRadius] = useState(DEFAULT_RADIUS_AU);
   const [proximityCount, setProximityCount] = useState(0);
@@ -191,7 +193,7 @@ export default function App() {
     sceneRef.current = scene;
     scene.init(containerRef.current);
 
-    const index = new IndexManager();
+    const index = indexManager;
     indexRef.current = index;
 
     const raycaster = new NeoRaycaster(
@@ -283,7 +285,7 @@ export default function App() {
       indexRef.current = null;
       raycasterRef.current = null;
     };
-  }, []);
+  }, [indexManager]);
 
   return (
     <div className="relative w-screen h-screen bg-[#000008] overflow-hidden">
@@ -303,6 +305,9 @@ export default function App() {
           matchCount={proximityCount}
           onChange={onProximityChange}
         />
+      </div>
+      <div className="absolute bottom-4 right-4">
+        <StatsPanel indexManager={indexManager} />
       </div>
     </div>
   );

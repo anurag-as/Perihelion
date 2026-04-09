@@ -244,6 +244,24 @@ export const MISS_DIST_MEGA_KM_THRESHOLD = 1_000_000;
 export const NEO_INCLINATION_MAX_DEG = 80;
 
 // ---------------------------------------------------------------------------
+// Bonsai backend kind → display name and cost-model explanation
+// ---------------------------------------------------------------------------
+
+export const BONSAI_BACKEND_NAMES: Record<number, string> = {
+  0: "R-tree",
+  1: "KD-tree",
+  2: "Quadtree",
+  3: "Grid",
+};
+
+export const BONSAI_COST_MODEL: Record<number, string> = {
+  0: "Balanced for mixed workloads — good range and kNN performance",
+  1: "Optimised for kNN queries on uniformly distributed data",
+  2: "Efficient for clustered 2D/3D data with spatial locality",
+  3: "Fast uniform-grid lookups — best for evenly spaced data",
+};
+
+// ---------------------------------------------------------------------------
 // NEO legend entries — category, display colour, and label
 // ---------------------------------------------------------------------------
 
