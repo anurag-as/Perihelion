@@ -14,13 +14,6 @@ import {
 } from "./constants";
 import imoData from "../../public/imo_showers.json";
 
-const NASA_API_KEY = (() => {
-  try {
-    const key = import.meta.env?.VITE_NASA_API_KEY as string | undefined;
-    if (key && key.length > 0) return key;
-  } catch {}
-  return "DEMO_KEY";
-})();
 const JPL_BASE =
   import.meta.env?.DEV === true ? JPL_CAD_DEV_PROXY : JPL_CAD_PROD_BASE;
 
@@ -140,7 +133,7 @@ async function fetchNeowsChunk(
   const cached = cacheGet<NeowsResponse>(cacheKey);
   if (cached) return cached;
 
-  const url = `${NASA_NEOWS_BASE}?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&api_key=${NASA_API_KEY}`;
+  const url = `${NASA_NEOWS_BASE}?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}`;
   const res = await safeFetch(url);
   const data = (await res.json()) as NeowsResponse;
   cacheSet(cacheKey, data);
