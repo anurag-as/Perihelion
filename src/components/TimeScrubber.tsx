@@ -68,7 +68,7 @@ export default function TimeScrubber({
         value={offsetDays}
         onChange={handleChange}
         className="w-full accent-[#00FF88] disabled:cursor-not-allowed"
-        aria-label="Time offset in days from today (±30 days)"
+        aria-label={`Time offset in days from today (±${SCRUBBER_DAYS} days)`}
         disabled={isLoading || disabled}
         aria-disabled={disabled}
       />
