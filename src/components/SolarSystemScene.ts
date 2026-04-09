@@ -15,6 +15,7 @@ import {
   COLOUR_CLOSE_010,
   COLOUR_FAR,
   COLOUR_HAZARDOUS,
+  COLOUR_SELECTED,
   DEG2RAD,
   DIAMOND_STROKE_COLOUR,
   DIAMOND_STROKE_LINE_WIDTH,
@@ -535,7 +536,9 @@ export class SolarSystemScene {
 
   private tickFlyTo(): void {
     if (!this.flyTarget || this.flyFramesLeft <= 0) return;
-    const alpha = (this.flyFramesLeft / FLY_TO_FRAMES) * 0.1 + 0.02;
+    // Ease-in: start slow, accelerate toward target.
+    const progress = 1 - this.flyFramesLeft / FLY_TO_FRAMES;
+    const alpha = 0.02 + progress * 0.08;
     this.camera.position.lerp(this.flyTarget, alpha);
     if (this.flyControlsTarget) {
       this.controls.target.lerp(this.flyControlsTarget, alpha);
@@ -549,6 +552,9 @@ export class SolarSystemScene {
 
   updateNeoPoints(neos: NeoData[]): void {
     this.disposeNeoPoints();
+    // Preserve the selected NEO reference across updates so the selection
+    // highlight is re-applied below if the object still exists in the new set.
+    const prevSelected = this.selectedNeo;
     this.selectedNeo = null;
 
     this._currentNeos = neos;
@@ -623,6 +629,25 @@ export class SolarSystemScene {
       this.hazardPoints = new THREE.Points(hGeo, hMat);
       this.scene.add(this.hazardPoints);
     }
+
+    // Re-apply selection highlight if the previously selected NEO still exists
+    // in the new display set (e.g. after a hazard filter toggle).
+    if (prevSelected) {
+      const idx = this._displayNeos.indexOf(prevSelected);
+      if (idx !== -1) {
+        this.selectedNeo = prevSelected;
+        const colorAttr = this.neoPoints!.geometry.getAttribute(
+          "color",
+        ) as THREE.BufferAttribute;
+        const alphaAttr = this.neoPoints!.geometry.getAttribute(
+          "alpha",
+        ) as THREE.BufferAttribute;
+        colorAttr.setXYZ(idx, ...COLOUR_SELECTED);
+        alphaAttr.setX(idx, 1.0);
+        colorAttr.needsUpdate = true;
+        alphaAttr.needsUpdate = true;
+      }
+    }
   }
 
   highlightNeos(ids: Set<bigint> | null): void {
@@ -654,7 +679,7 @@ export class SolarSystemScene {
     if (this.selectedNeo) {
       const selIdx = this._displayNeos.indexOf(this.selectedNeo);
       if (selIdx !== -1) {
-        colorAttr.setXYZ(selIdx, 1, 1, 1);
+        colorAttr.setXYZ(selIdx, ...COLOUR_SELECTED);
         alphaAttr.setX(selIdx, 1.0);
         colorAttr.needsUpdate = true;
         alphaAttr.needsUpdate = true;
@@ -711,7 +736,7 @@ export class SolarSystemScene {
     // Paint new selection white and ensure it's visible regardless of filter state.
     const idx = this._displayNeos.indexOf(neo);
     if (idx !== -1) {
-      colorAttr.setXYZ(idx, 1, 1, 1);
+      colorAttr.setXYZ(idx, ...COLOUR_SELECTED);
       alphaAttr.setX(idx, 1.0);
     }
 
@@ -808,11 +833,14 @@ export class SolarSystemScene {
     this.flyFramesLeft = 0;
 
     if (this.flashOverlay) {
+      this.camera.remove(this.flashOverlay);
       this.flashOverlay.geometry.dispose();
       (this.flashOverlay.material as THREE.Material).dispose();
       this.flashOverlay = null;
     }
     this.flashFramesLeft = 0;
+    // Remove the camera from the scene if flashMigration added it.
+    this.scene.remove(this.camera);
   }
 
   private disposeNeoPoints(): void {

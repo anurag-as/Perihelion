@@ -152,7 +152,7 @@ export async function fetchNeows(
 ): Promise<NeowsResponse> {
   const totalDays = daysBetween(startDate, endDate);
 
-  if (totalDays < MAX_NEOWS_DAYS) {
+  if (totalDays <= MAX_NEOWS_DAYS) {
     return fetchNeowsChunk(startDate, endDate);
   }
 

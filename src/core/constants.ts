@@ -232,6 +232,7 @@ export const JPL_CAD_DEV_PROXY = "/api/jpl";
 export const SNAPSHOT_PATH = "/neo_snapshot.json";
 
 export const FETCH_LOOKAHEAD_DAYS = 30;
+export const SCRUBBER_FETCH_WINDOW_DAYS = 30;
 
 // ---------------------------------------------------------------------------
 // InfoPanel

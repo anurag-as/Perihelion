@@ -23,6 +23,7 @@ export default function StatsPanel({ indexManager, scene }: StatsPanelProps) {
 
   useEffect(() => {
     const id = setInterval(() => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       setStats((_prev) => {
         const next = indexManager.stats();
         const wasMigrating = wasMigratingRef.current;

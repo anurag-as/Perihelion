@@ -13,6 +13,8 @@ import NeoLegend, {
 } from "./components/NeoLegend";
 import SearchBar from "./components/SearchBar";
 import StatsPanel from "./components/StatsPanel";
+import TimeScrubber from "./components/TimeScrubber";
+import LayerControls from "./components/LayerControls";
 import {
   loadSnapshot,
   parseNeows,
@@ -24,36 +26,36 @@ import { neoPosition, earthPositionAU } from "./core/coordinateConverter";
 import { IndexManager } from "./core/indexManager";
 import {
   FETCH_LOOKAHEAD_DAYS,
+  SCRUBBER_FETCH_WINDOW_DAYS,
   MS_PER_DAY,
   NEO_INCLINATION_MAX_DEG,
   DEG2RAD,
 } from "./core/constants";
-import type { NeoData } from "./core/types";
+import type { NeoData, LayerType } from "./core/types";
 
 const DEFAULT_RADIUS_AU = PROXIMITY_MAX_AU / 2;
 
 const TWO_PI = 2 * Math.PI;
 const INCLINATION_MAX_RAD = NEO_INCLINATION_MAX_DEG * DEG2RAD;
 
-function enrichPositions(neos: NeoData[]): NeoData[] {
+function enrichPositions(neos: NeoData[], referenceDate?: Date): NeoData[] {
   const enriched: NeoData[] = [];
-  const today = new Date();
+  const ref = referenceDate ?? new Date();
   for (let i = 0; i < neos.length; i++) {
     const neo = neos[i];
 
     const idNum = parseInt(neo.id, 10);
     const h1 = Math.imul(isNaN(idNum) ? i : idNum, 2654435761) >>> 0;
     const h2 = Math.imul(h1, 2246822519) >>> 0;
-    const h3 = Math.imul(h2, 2246822519) >>> 0;
+    const h3 = Math.imul(h2, 3735928559) >>> 0;
 
     const azimuthRad = (h1 / 0x100000000) * TWO_PI;
     const sign = h3 < 0x80000000 ? 1 : -1;
     const inclinationRad = sign * (h2 / 0x100000000) * INCLINATION_MAX_RAD;
 
-    // Propagate NEO to today's position: daysFromNow is days from approachDate to today
-    // (negative = today is before closest approach, positive = today is after)
+    // Propagate NEO to the reference date's position
     const daysFromNow =
-      (today.getTime() - neo.approachDate.getTime()) / MS_PER_DAY;
+      (ref.getTime() - neo.approachDate.getTime()) / MS_PER_DAY;
 
     try {
       const position3d = neoPosition(
@@ -87,6 +89,20 @@ export default function App() {
     new Set(ALL_CATEGORIES),
   );
   const [selectedNeo, setSelectedNeo] = useState<NeoData | null>(null);
+  const [scrubberDate, setScrubberDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [scrubberLoading, setScrubberLoading] = useState(false);
+  const scrubberAbortRef = useRef<AbortController | null>(null);
+  const scrubberDateRef = useRef<Date>(
+    (() => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
+    })(),
+  );
 
   const applyFilters = useCallback(
     (radiusAU: number, categories: Set<NeoCategory>) => {
@@ -102,7 +118,7 @@ export default function App() {
       if (atMax) {
         candidates = index.getStore().getAll();
       } else {
-        const earthPos = earthPositionAU(new Date());
+        const earthPos = earthPositionAU(scrubberDateRef.current ?? new Date());
         candidates = index.rangeQuery(earthPos, radiusAU);
       }
 
@@ -173,6 +189,83 @@ export default function App() {
     [activeCategories, applyFilters],
   );
 
+  const onTimeChange = useCallback(
+    async (date: Date) => {
+      const index = indexRef.current;
+      const scene = sceneRef.current;
+      if (!index || !index.isReady() || !scene) return;
+
+      // Cancel any in-flight time change.
+      scrubberAbortRef.current?.abort();
+      const abort = new AbortController();
+      scrubberAbortRef.current = abort;
+
+      setScrubberDate(date);
+      scrubberDateRef.current = date;
+
+      // Show spinner only if rebuild takes longer than 2s.
+      const spinnerTimer = setTimeout(() => {
+        if (!abort.signal.aborted) setScrubberLoading(true);
+      }, 2000);
+
+      try {
+        const halfWindow = Math.floor(SCRUBBER_FETCH_WINDOW_DAYS / 2);
+        const start = new Date(date.getTime() - halfWindow * MS_PER_DAY);
+        const end = new Date(date.getTime() + halfWindow * MS_PER_DAY);
+        let neos: NeoData[] = [];
+
+        try {
+          const response = await fetchNeows(start, end);
+          if (abort.signal.aborted) return;
+          neos = enrichPositions(parseNeows(response), date);
+          setFetchStatus("live");
+        } catch (err) {
+          const status = (err as Error & { status?: number }).status;
+          try {
+            const snapshot = await loadSnapshot();
+            if (abort.signal.aborted) return;
+            neos = enrichPositions(parseNeows(snapshot), date);
+            setFetchStatus(status === 429 ? "rate-limited" : "snapshot");
+          } catch {
+            neos = [];
+            setFetchStatus("snapshot");
+          }
+        }
+
+        if (abort.signal.aborted) return;
+
+        // Rebuild index with new data; previous index stays active until swap.
+        index.rebuild(neos);
+        const enrichedNeos = index.getStore().getAll();
+        scene.updateNeoPoints(enrichedNeos);
+        scene.updatePlanetPositions(date);
+        // Clear selection — the previous NEO may not exist in the new dataset.
+        setSelectedNeo(null);
+
+        const raycaster = raycasterRef.current;
+        if (raycaster) {
+          raycaster.setCamera(scene.getCamera());
+          const pts = scene.getNeoPoints();
+          if (pts) raycaster.setNeoPoints(pts, scene.displayNeos);
+        }
+
+        applyFilters(proximityRadiusRef.current, activeCategories);
+      } finally {
+        clearTimeout(spinnerTimer);
+        if (!abort.signal.aborted) setScrubberLoading(false);
+      }
+    },
+    [activeCategories, applyFilters],
+  );
+
+  const onLayerToggle = useCallback((layer: LayerType, enabled: boolean) => {
+    sceneRef.current?.setLayerVisible(layer, enabled);
+  }, []);
+
+  const onHazardFilter = useCallback((enabled: boolean) => {
+    sceneRef.current?.setLayerVisible("hazardOnly", enabled);
+  }, []);
+
   const onSceneClick = useCallback((worldPoint: import("three").Vector3) => {
     const index = indexRef.current;
     const scene = sceneRef.current;
@@ -230,13 +323,13 @@ export default function App() {
           fetchNeows(today, end),
           fetchCad(today, end),
         ]);
-        neos = enrichPositions(parseNeows(response));
+        neos = enrichPositions(parseNeows(response), today);
         setFetchStatus("live");
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
         try {
           const snapshot = await loadSnapshot();
-          neos = enrichPositions(parseNeows(snapshot));
+          neos = enrichPositions(parseNeows(snapshot), today);
           setFetchStatus(status === 429 ? "rate-limited" : "snapshot");
         } catch {
           neos = [];
@@ -294,6 +387,15 @@ export default function App() {
     <div className="relative w-screen h-screen bg-[#000008] overflow-hidden">
       <CachedDataBanner status={fetchStatus} />
       <div ref={containerRef} className="w-full h-full" />
+      {scrubberLoading && (
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none"
+          aria-label="Rebuilding index"
+          role="status"
+        >
+          <span className="text-[#00FF88] text-4xl animate-spin">⟳</span>
+        </div>
+      )}
       <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
         <NeoLegend
           activeCategories={activeCategories}
@@ -303,10 +405,19 @@ export default function App() {
       </div>
       <div className="absolute bottom-4 left-4 flex flex-col gap-2 items-start">
         <SearchBar onSearch={onSearch} />
+        <TimeScrubber
+          date={scrubberDate}
+          onChange={onTimeChange}
+          isLoading={scrubberLoading}
+        />
         <ProximitySlider
           radiusAU={proximityRadius}
           matchCount={proximityCount}
           onChange={onProximityChange}
+        />
+        <LayerControls
+          onLayerToggle={onLayerToggle}
+          onHazardFilter={onHazardFilter}
         />
       </div>
       <div className="absolute bottom-4 right-4">
