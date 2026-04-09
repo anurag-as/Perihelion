@@ -98,14 +98,14 @@ describe("fetchNeows", () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
-  it("injects DEMO_KEY when VITE_NASA_API_KEY is not set", async () => {
+  it("does not include api_key in the request URL (key is injected by the proxy)", async () => {
     const spy = mockFetch(() => ({
       status: 200,
       body: makeNeowsResponse(["2025-01-01"]),
     }));
 
     await fetchNeows(new Date("2025-01-01"), new Date("2025-01-03"));
-    expect(spy.mock.calls[0][0]).toContain("api_key=");
+    expect(spy.mock.calls[0][0]).not.toContain("api_key=");
   });
 
   it("throws on HTTP 429", async () => {
