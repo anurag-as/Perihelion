@@ -6,11 +6,9 @@ import ProximitySlider, {
   PROXIMITY_MAX_AU,
 } from "./components/ProximitySlider";
 import InfoPanel from "./components/InfoPanel";
-import SceneControls, {
-  ALL_CATEGORIES,
-  neoCategory,
-  type NeoCategory,
-} from "./components/SceneControls";
+import SceneControls from "./components/SceneControls";
+import { ALL_CATEGORIES, neoCategory } from "./core/constants";
+import type { NeoCategory } from "./core/types";
 import SearchBar from "./components/SearchBar";
 import StatsPanel from "./components/StatsPanel";
 import TimeScrubber from "./components/TimeScrubber";
@@ -456,7 +454,7 @@ export default function App() {
       indexRef.current = null;
       raycasterRef.current = null;
     };
-  }, [indexManager]);
+  }, [indexManager, onSceneClick]);
 
   return (
     <div className="relative w-screen h-screen bg-[#000008] overflow-hidden">

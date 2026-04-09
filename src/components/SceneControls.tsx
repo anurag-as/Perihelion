@@ -1,28 +1,6 @@
 import { useState } from "react";
-import {
-  KM_PER_AU,
-  NEO_LEGEND_ENTRIES,
-  PROXIMITY_CLOSE_AU,
-  PROXIMITY_MID_AU,
-} from "../core/constants";
-import type { LayerType, NeoCategory, NeoData } from "../core/types";
-
-export type { NeoCategory };
-
-export const ALL_CATEGORIES: NeoCategory[] = [
-  "hazardous",
-  "close005",
-  "close010",
-  "far",
-];
-
-export function neoCategory(neo: NeoData): NeoCategory {
-  if (neo.hazardous) return "hazardous";
-  const distAU = neo.missDistKm / KM_PER_AU;
-  if (distAU <= PROXIMITY_CLOSE_AU) return "close005";
-  if (distAU <= PROXIMITY_MID_AU) return "close010";
-  return "far";
-}
+import { NEO_LEGEND_ENTRIES } from "../core/constants";
+import type { LayerType, NeoCategory } from "../core/types";
 
 interface SceneControlsProps {
   activeCategories: Set<NeoCategory>;

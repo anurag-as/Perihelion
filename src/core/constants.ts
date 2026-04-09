@@ -1,3 +1,5 @@
+import type { NeoCategory, NeoData } from "./types";
+
 // ---------------------------------------------------------------------------
 // Maths
 // ---------------------------------------------------------------------------
@@ -266,6 +268,16 @@ export const ASTEROID_HIGHLIGHT_OFFSET = 0.25;
 
 export const RAYCASTER_POINT_THRESHOLD = 0.015;
 
+// ---------------------------------------------------------------------------
+// InstancedMesh for top-N closest NEOs
+// ---------------------------------------------------------------------------
+
+export const NEO_INSTANCED_TOP_N = 20;
+// Visual scale multiplier so spheres are visible at solar-system scale.
+export const NEO_INSTANCED_SCALE_MULTIPLIER = 800;
+// Minimum rendered radius in AU so tiny NEOs are still visible.
+export const NEO_INSTANCED_MIN_RADIUS_AU = 0.003;
+
 export const PULSE_SPEED = 0.003;
 export const PULSE_MIN_BRIGHTNESS = 0.6;
 export const PULSE_BRIGHTNESS_RANGE = 0.4;
@@ -335,3 +347,18 @@ export const NEO_LEGEND_ENTRIES = [
   { category: "close010" as const, color: "#88CCFF", label: "Within 0.1 AU" },
   { category: "far" as const, color: "#334455", label: "Beyond 0.1 AU" },
 ] as const;
+
+export const ALL_CATEGORIES = [
+  "hazardous",
+  "close005",
+  "close010",
+  "far",
+] as const;
+
+export function neoCategory(neo: NeoData): NeoCategory {
+  if (neo.hazardous) return "hazardous";
+  const distAU = neo.missDistKm / KM_PER_AU;
+  if (distAU <= PROXIMITY_CLOSE_AU) return "close005";
+  if (distAU <= PROXIMITY_MID_AU) return "close010";
+  return "far";
+}

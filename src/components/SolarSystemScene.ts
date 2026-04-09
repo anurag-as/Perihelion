@@ -92,6 +92,9 @@ import {
   TRAJECTORY_ARC_HALF_DAYS,
   TRAJECTORY_ARC_OPACITY,
   TRAJECTORY_ARC_POINTS,
+  NEO_INSTANCED_TOP_N,
+  NEO_INSTANCED_SCALE_MULTIPLIER,
+  NEO_INSTANCED_MIN_RADIUS_AU,
 } from "../core/constants";
 
 function neoColour(neo: NeoData): readonly [number, number, number] {
@@ -311,6 +314,8 @@ export class SolarSystemScene {
   private planetMeshes: THREE.Mesh[] = [];
   private neoPoints: THREE.Points | null = null;
   private hazardPoints: THREE.Points | null = null;
+  private neoInstancedMesh: THREE.InstancedMesh | null = null;
+  private _top20Neos: NeoData[] = [];
   private textureLoader = new THREE.TextureLoader();
 
   // Full NEO list as received; _displayNeos is the filtered subset actually in the GPU buffer.
@@ -692,6 +697,18 @@ export class SolarSystemScene {
     ) as THREE.BufferAttribute;
     colorAttr.setXYZ(idx, brightness, brightness, brightness);
     colorAttr.needsUpdate = true;
+
+    // Pulse the instanced mesh instance if this NEO is in the top-20.
+    if (this.neoInstancedMesh && this.neoInstancedMesh.instanceColor) {
+      const instIdx = this._top20Neos.indexOf(this.selectedNeo);
+      if (instIdx !== -1) {
+        this.neoInstancedMesh.setColorAt(
+          instIdx,
+          new THREE.Color(brightness, brightness, brightness),
+        );
+        this.neoInstancedMesh.instanceColor.needsUpdate = true;
+      }
+    }
   }
 
   private tickFlyTo(): void {
@@ -709,6 +726,46 @@ export class SolarSystemScene {
     }
   }
 
+  private buildNeoInstancedMesh(top20: NeoData[]): void {
+    if (this.neoInstancedMesh) {
+      this.neoInstancedMesh.geometry.dispose();
+      (this.neoInstancedMesh.material as THREE.Material).dispose();
+      this.scene.remove(this.neoInstancedMesh);
+      this.neoInstancedMesh = null;
+    }
+    if (top20.length === 0) return;
+
+    const geo = new THREE.SphereGeometry(1, 8, 6);
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true });
+    const mesh = new THREE.InstancedMesh(geo, mat, top20.length);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(
+      new Float32Array(top20.length * 3),
+      3,
+    );
+
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < top20.length; i++) {
+      const neo = top20[i];
+      const [x, y, z] = neo.position3d;
+      const radiusAU = Math.max(
+        (neo.diameterKm / 2 / KM_PER_AU) * NEO_INSTANCED_SCALE_MULTIPLIER,
+        NEO_INSTANCED_MIN_RADIUS_AU,
+      );
+      dummy.position.set(x, y, z);
+      dummy.scale.setScalar(radiusAU);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      const [r, g, b] = neoColour(neo);
+      mesh.setColorAt(i, new THREE.Color(r, g, b));
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+    this.neoInstancedMesh = mesh;
+    this._top20Neos = top20;
+    this.scene.add(mesh);
+  }
+
   updateNeoPoints(neos: NeoData[]): void {
     this.disposeNeoPoints();
     // Preserve the selected NEO reference across updates so the selection
@@ -720,6 +777,11 @@ export class SolarSystemScene {
     this._displayNeos = this.hazardOnlyActive
       ? neos.filter((n) => n.hazardous)
       : neos;
+
+    // Sort all NEOs by miss distance and take the closest N for instanced rendering.
+    const sortedByDist = [...neos].sort((a, b) => a.missDistKm - b.missDistKm);
+    const top20 = sortedByDist.slice(0, NEO_INSTANCED_TOP_N);
+    this.buildNeoInstancedMesh(top20);
 
     if (this._displayNeos.length === 0) return;
 
@@ -867,6 +929,27 @@ export class SolarSystemScene {
         hazardAlpha.needsUpdate = true;
       }
     }
+
+    // Sync instanced mesh colours — dim hidden NEOs, restore visible ones.
+    if (this.neoInstancedMesh && this.neoInstancedMesh.instanceColor) {
+      for (let i = 0; i < this._top20Neos.length; i++) {
+        const neo = this._top20Neos[i];
+        const visible =
+          ids === null || (neo.bonsaiId !== undefined && ids.has(neo.bonsaiId));
+        const [r, g, b] = visible ? neoColour(neo) : COLOUR_DIM;
+        this.neoInstancedMesh.setColorAt(i, new THREE.Color(r, g, b));
+      }
+      if (this.selectedNeo) {
+        const selIdx = this._top20Neos.indexOf(this.selectedNeo);
+        if (selIdx !== -1) {
+          this.neoInstancedMesh.setColorAt(
+            selIdx,
+            new THREE.Color(...COLOUR_SELECTED),
+          );
+        }
+      }
+      this.neoInstancedMesh.instanceColor.needsUpdate = true;
+    }
   }
 
   selectNeo(neo: NeoData): void {
@@ -890,6 +973,18 @@ export class SolarSystemScene {
         // the highlight pass will correct it on the next filter update.
         alphaAttr.setX(prevIdx, 1.0);
       }
+      // Restore instanced mesh colour for previously selected NEO.
+      if (this.neoInstancedMesh && this.neoInstancedMesh.instanceColor) {
+        const prevInstIdx = this._top20Neos.indexOf(this.selectedNeo);
+        if (prevInstIdx !== -1) {
+          const [r, g, b] = neoColour(this.selectedNeo);
+          this.neoInstancedMesh.setColorAt(
+            prevInstIdx,
+            new THREE.Color(r, g, b),
+          );
+          this.neoInstancedMesh.instanceColor.needsUpdate = true;
+        }
+      }
     }
 
     this.selectedNeo = neo;
@@ -903,6 +998,18 @@ export class SolarSystemScene {
 
     colorAttr.needsUpdate = true;
     alphaAttr.needsUpdate = true;
+
+    // Paint instanced mesh instance white if this NEO is in the top-20.
+    if (this.neoInstancedMesh && this.neoInstancedMesh.instanceColor) {
+      const instIdx = this._top20Neos.indexOf(neo);
+      if (instIdx !== -1) {
+        this.neoInstancedMesh.setColorAt(
+          instIdx,
+          new THREE.Color(...COLOUR_SELECTED),
+        );
+        this.neoInstancedMesh.instanceColor.needsUpdate = true;
+      }
+    }
   }
 
   flyToNeo(neo: NeoData): void {
@@ -1041,5 +1148,12 @@ export class SolarSystemScene {
       this.scene.remove(this.hazardPoints);
       this.hazardPoints = null;
     }
+    if (this.neoInstancedMesh) {
+      this.neoInstancedMesh.geometry.dispose();
+      (this.neoInstancedMesh.material as THREE.Material).dispose();
+      this.scene.remove(this.neoInstancedMesh);
+      this.neoInstancedMesh = null;
+    }
+    this._top20Neos = [];
   }
 }

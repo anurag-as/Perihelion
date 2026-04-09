@@ -58,7 +58,7 @@ export default function StatsPanel({
 
   useEffect(() => {
     const id = setInterval(() => {
-      setStats((_prev) => {
+      setStats(() => {
         const next = indexManager.stats();
         const wasMigrating = wasMigratingRef.current;
         wasMigratingRef.current = next.migrating;
