@@ -77,44 +77,31 @@ describe("fetchNeows", () => {
     expect(spy.mock.calls[0][0]).toContain("end_date=2025-01-07");
   });
 
-  it("splits into multiple chunks when range exceeds 7 days", async () => {
+  it("passes the full date range to the API", async () => {
     const start = new Date("2025-01-01");
-    const end = new Date("2025-01-15"); // 14 days → 2 chunks of 7 days each
+    const end = new Date("2025-01-15");
+    const expected = makeNeowsResponse(["2025-01-01"]);
 
-    let callCount = 0;
-    const spy = mockFetch(() => {
-      callCount++;
-      return {
-        status: 200,
-        body: makeNeowsResponse([`2025-01-0${callCount}`]),
-      };
-    });
+    const spy = mockFetch(() => ({ status: 200, body: expected }));
 
-    const result = await fetchNeows(start, end);
-    expect(spy.mock.calls.length).toBeGreaterThanOrEqual(2);
-    // merged near_earth_objects should have keys from both chunks
-    expect(
-      Object.keys(result.near_earth_objects).length,
-    ).toBeGreaterThanOrEqual(2);
+    await fetchNeows(start, end);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0]).toContain("start_date=2025-01-01");
+    expect(spy.mock.calls[0][0]).toContain("end_date=2025-01-15");
   });
 
-  it("fetches chunks sequentially, not in parallel", async () => {
+  it("fetches the full date range in a single request (chunking handled by worker)", async () => {
     const start = new Date("2025-01-01");
-    const end = new Date("2025-01-21"); // 20 days → 3 chunks
+    const end = new Date("2025-01-21");
+    const expected = makeNeowsResponse(["2025-01-01"]);
 
-    const callOrder: number[] = [];
-    let callIndex = 0;
-
-    mockFetch(() => {
-      const i = ++callIndex;
-      callOrder.push(i);
-      return { status: 200, body: makeNeowsResponse([`2025-01-0${i}`]) };
-    });
+    const spy = mockFetch(() => ({ status: 200, body: expected }));
 
     await fetchNeows(start, end);
 
-    // Chunks must be fetched in order 1, 2, 3 — not concurrently
-    expect(callOrder).toEqual([1, 2, 3]);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0]).toContain("start_date=2025-01-01");
+    expect(spy.mock.calls[0][0]).toContain("end_date=2025-01-21");
   });
 
   it("does not include api_key in the request URL (key is injected by the proxy)", async () => {

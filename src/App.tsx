@@ -82,6 +82,7 @@ export default function App() {
   const indexRef = useRef<IndexManager | null>(null);
   const raycasterRef = useRef<NeoRaycaster | null>(null);
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("live");
+  const initialLoadDoneRef = useRef(false);
   const [indexManager] = useState(() => new IndexManager());
   const [scene, setScene] = useState<SolarSystemScene | null>(null);
   const [wasmError, setWasmError] = useState(false);
@@ -210,6 +211,7 @@ export default function App() {
       const index = indexRef.current;
       const scene = sceneRef.current;
       if (!index || !index.isReady() || !scene) return;
+      if (!initialLoadDoneRef.current) return;
 
       // Cancel any in-flight time change.
       scrubberAbortRef.current?.abort();
