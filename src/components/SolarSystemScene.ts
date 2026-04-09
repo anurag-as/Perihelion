@@ -1,10 +1,19 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import type { NeoData, LayerType } from "../core/types";
-import { earthPositionAU } from "../core/coordinateConverter";
+import type { MeteorShower, NeoData, LayerType } from "../core/types";
+import {
+  earthPositionAU,
+  neoPosition,
+  radiantToXYZ,
+} from "../core/coordinateConverter";
 import {
   AMBIENT_LIGHT_HEX,
   AMBIENT_LIGHT_INTENSITY,
+  ASTEROID_HIGHLIGHT_OFFSET,
+  ASTEROID_SHAPE_ANGLE_JITTER,
+  ASTEROID_SHAPE_POINTS,
+  ASTEROID_SHAPE_RADIUS_JITTER,
+  ASTEROID_SHAPE_RADIUS_MIN,
   CAMERA_FAR,
   CAMERA_FOV,
   CAMERA_INITIAL_Y,
@@ -17,16 +26,33 @@ import {
   COLOUR_HAZARDOUS,
   COLOUR_SELECTED,
   DEG2RAD,
+  NEO_INCLINATION_MAX_DEG,
   DIAMOND_STROKE_COLOUR,
   DIAMOND_STROKE_LINE_WIDTH,
   DIAMOND_TEXTURE_PAD,
   DIAMOND_TEXTURE_SIZE,
+  FLASH_COLOUR_HEX,
+  FLASH_FRAMES,
+  FLASH_OPACITY,
+  FLASH_RENDER_ORDER,
+  FLASH_Z_OFFSET,
+  FLY_TO_ALPHA_RANGE,
+  FLY_TO_ALPHA_START,
   FLY_TO_FRAMES,
   FLY_TO_OFFSET_AU,
   HAZARD_ALPHA_DISCARD,
   HAZARD_DIAMOND_PIXEL_SIZE,
   J2000_MS,
   KM_PER_AU,
+  METEOR_CONE_HEIGHT_MIN,
+  METEOR_CONE_HEIGHT_RANGE,
+  METEOR_CONE_RADIUS_MIN,
+  METEOR_CONE_RADIUS_RANGE,
+  METEOR_CONE_SEGMENTS,
+  METEOR_MAX_ZHR,
+  METEOR_OPACITY_MIN,
+  METEOR_OPACITY_RANGE,
+  METEOR_RADIANT_DISTANCE_AU,
   MS_PER_DAY,
   NEO_ATLAS_CELL_PX,
   NEO_ATLAS_COLS,
@@ -63,6 +89,9 @@ import {
   SUN_RADIUS_AU,
   SUN_SPHERE_SEGMENTS,
   SUN_TEXTURE_URL,
+  TRAJECTORY_ARC_HALF_DAYS,
+  TRAJECTORY_ARC_OPACITY,
+  TRAJECTORY_ARC_POINTS,
 } from "../core/constants";
 
 function neoColour(neo: NeoData): readonly [number, number, number] {
@@ -97,21 +126,20 @@ function drawAsteroidCell(
   const cx = ox + size / 2;
   const cy = oy + size / 2;
   const baseR = size / 2 - 2;
-  const points = 8;
-  const angleStep = (Math.PI * 2) / points;
+  const angleStep = (Math.PI * 2) / ASTEROID_SHAPE_POINTS;
 
   const verts: [number, number][] = [];
-  for (let i = 0; i < points; i++) {
-    const r = baseR * (0.82 + rand() * 0.18);
-    const angle = i * angleStep + (rand() - 0.5) * angleStep * 0.25;
+  for (let i = 0; i < ASTEROID_SHAPE_POINTS; i++) {
+    const r = baseR * (ASTEROID_SHAPE_RADIUS_MIN + rand() * ASTEROID_SHAPE_RADIUS_JITTER);
+    const angle = i * angleStep + (rand() - 0.5) * angleStep * ASTEROID_SHAPE_ANGLE_JITTER;
     verts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
   }
 
   ctx.save();
   ctx.beginPath();
-  for (let i = 0; i < points; i++) {
+  for (let i = 0; i < ASTEROID_SHAPE_POINTS; i++) {
     const curr = verts[i];
-    const next = verts[(i + 1) % points];
+    const next = verts[(i + 1) % ASTEROID_SHAPE_POINTS];
     const mid: [number, number] = [
       (curr[0] + next[0]) / 2,
       (curr[1] + next[1]) / 2,
@@ -120,22 +148,21 @@ function drawAsteroidCell(
     else ctx.quadraticCurveTo(curr[0], curr[1], mid[0], mid[1]);
   }
   const closeMid: [number, number] = [
-    (verts[points - 1][0] + verts[0][0]) / 2,
-    (verts[points - 1][1] + verts[0][1]) / 2,
+    (verts[ASTEROID_SHAPE_POINTS - 1][0] + verts[0][0]) / 2,
+    (verts[ASTEROID_SHAPE_POINTS - 1][1] + verts[0][1]) / 2,
   ];
   ctx.quadraticCurveTo(
-    verts[points - 1][0],
-    verts[points - 1][1],
+    verts[ASTEROID_SHAPE_POINTS - 1][0],
+    verts[ASTEROID_SHAPE_POINTS - 1][1],
     closeMid[0],
     closeMid[1],
   );
   ctx.closePath();
   ctx.clip();
 
-  // Lit sphere gradient: bright off-centre highlight → dark edge
   const grad = ctx.createRadialGradient(
-    cx - baseR * 0.25,
-    cy - baseR * 0.25,
+    cx - baseR * ASTEROID_HIGHLIGHT_OFFSET,
+    cy - baseR * ASTEROID_HIGHLIGHT_OFFSET,
     0,
     cx,
     cy,
@@ -296,6 +323,8 @@ export class SolarSystemScene {
 
   private flashFramesLeft = 0;
   private flashOverlay: THREE.Mesh | null = null;
+  private meteorGroup!: THREE.Group;
+  private trajectoryGroup!: THREE.Group;
 
   get currentNeos(): NeoData[] {
     return this._currentNeos;
@@ -357,6 +386,8 @@ export class SolarSystemScene {
     this.addAmbientLight();
     this.addSun();
     this.addPlanets();
+    this.addMeteorGroup();
+    this.addTrajectoryGroup();
 
     this.resizeObserver = new ResizeObserver(() => {
       const { clientWidth, clientHeight } = container;
@@ -466,6 +497,130 @@ export class SolarSystemScene {
     return torus;
   }
 
+  private addMeteorGroup(): void {
+    this.meteorGroup = new THREE.Group();
+    this.scene.add(this.meteorGroup);
+  }
+
+  private addTrajectoryGroup(): void {
+    this.trajectoryGroup = new THREE.Group();
+    this.trajectoryGroup.visible = false;
+    this.scene.add(this.trajectoryGroup);
+    this.layers.trajectories.push(this.trajectoryGroup);
+  }
+
+  private updateTrajectoryArcs(neos: NeoData[]): void {
+    for (const child of this.trajectoryGroup.children) {
+      const ls = child as THREE.LineSegments;
+      ls.geometry.dispose();
+      (ls.material as THREE.Material).dispose();
+    }
+    this.trajectoryGroup.clear();
+
+    const TWO_PI = 2 * Math.PI;
+    const INCLINATION_MAX_RAD = NEO_INCLINATION_MAX_DEG * DEG2RAD;
+
+    for (const neo of neos) {
+      const idNum = parseInt(neo.id, 10);
+      const seed = isNaN(idNum) ? 0 : idNum;
+      const h1 = Math.imul(seed, 2654435761) >>> 0;
+      const h2 = Math.imul(h1, 2246822519) >>> 0;
+      const h3 = Math.imul(h2, 3735928559) >>> 0;
+      const azimuthRad = (h1 / 0x100000000) * TWO_PI;
+      const sign = h3 < 0x80000000 ? 1 : -1;
+      const inclinationRad = sign * (h2 / 0x100000000) * INCLINATION_MAX_RAD;
+
+      const pts: [number, number, number][] = [];
+      for (let i = 0; i < TRAJECTORY_ARC_POINTS; i++) {
+        const t = i / (TRAJECTORY_ARC_POINTS - 1);
+        const daysFromNow = -TRAJECTORY_ARC_HALF_DAYS + t * 2 * TRAJECTORY_ARC_HALF_DAYS;
+        try {
+          pts.push(
+            neoPosition(
+              neo.approachDate,
+              neo.missDistKm,
+              neo.velocityKmS,
+              daysFromNow,
+              azimuthRad,
+              inclinationRad,
+            ),
+          );
+        } catch {
+          pts.push(pts.length > 0 ? pts[pts.length - 1] : [0, 0, 0]);
+        }
+      }
+
+      const segCount = TRAJECTORY_ARC_POINTS - 1;
+      const posArray = new Float32Array(segCount * 2 * 3);
+      for (let i = 0; i < segCount; i++) {
+        const [ax, ay, az] = pts[i];
+        const [bx, by, bz] = pts[i + 1];
+        posArray[i * 6 + 0] = ax;
+        posArray[i * 6 + 1] = ay;
+        posArray[i * 6 + 2] = az;
+        posArray[i * 6 + 3] = bx;
+        posArray[i * 6 + 4] = by;
+        posArray[i * 6 + 5] = bz;
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(posArray, 3));
+
+      const [r, g, b] = neoColour(neo);
+      const mat = new THREE.LineBasicMaterial({
+        color: new THREE.Color(r, g, b),
+        transparent: true,
+        opacity: TRAJECTORY_ARC_OPACITY,
+        depthWrite: false,
+      });
+
+      this.trajectoryGroup.add(new THREE.LineSegments(geo, mat));
+    }
+  }
+
+  updateMeteorShowers(showers: MeteorShower[]): void {
+    for (const child of this.meteorGroup.children) {
+      const mesh = child as THREE.Mesh;
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    }
+    this.meteorGroup.clear();
+
+    for (const shower of showers) {
+      const [ux, uy, uz] = radiantToXYZ(shower.raDeg, shower.decDeg);
+
+      const px = ux * METEOR_RADIANT_DISTANCE_AU;
+      const py = uy * METEOR_RADIANT_DISTANCE_AU;
+      const pz = uz * METEOR_RADIANT_DISTANCE_AU;
+
+      const intensity = Math.min(shower.zhr / METEOR_MAX_ZHR, 1.0);
+      const coneHeight = METEOR_CONE_HEIGHT_MIN + intensity * METEOR_CONE_HEIGHT_RANGE;
+      const coneRadius = METEOR_CONE_RADIUS_MIN + intensity * METEOR_CONE_RADIUS_RANGE;
+
+      const geo = new THREE.ConeGeometry(coneRadius, coneHeight, METEOR_CONE_SEGMENTS);
+
+      const r = intensity;
+      const g = intensity * 0.5;
+      const b = 1.0 - intensity * 0.5;
+      const mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(r, g, b),
+        transparent: true,
+        opacity: METEOR_OPACITY_MIN + intensity * METEOR_OPACITY_RANGE,
+        depthWrite: false,
+      });
+
+      const cone = new THREE.Mesh(geo, mat);
+      cone.position.set(px, py, pz);
+
+      // ConeGeometry points along +Y by default; orient tip toward the Sun (origin).
+      const dir = new THREE.Vector3(ux, uy, uz).negate();
+      const up = new THREE.Vector3(0, 1, 0);
+      cone.quaternion.setFromUnitVectors(up, dir);
+
+      this.meteorGroup.add(cone);
+    }
+  }
+
   private startAnimationLoop(): void {
     const animate = () => {
       this.animFrameId = requestAnimationFrame(animate);
@@ -479,25 +634,20 @@ export class SolarSystemScene {
   }
 
   flashMigration(): void {
-    const FLASH_FRAMES = 30;
-    const FLASH_OPACITY = 0.35;
-
     if (!this.flashOverlay) {
       const geo = new THREE.PlaneGeometry(2, 2);
       const mat = new THREE.MeshBasicMaterial({
-        color: 0x00ffcc,
+        color: FLASH_COLOUR_HEX,
         transparent: true,
         opacity: FLASH_OPACITY,
         depthTest: false,
         depthWrite: false,
       });
       const mesh = new THREE.Mesh(geo, mat);
-      // Render in screen space by attaching to the camera.
-      mesh.renderOrder = 999;
+      mesh.renderOrder = FLASH_RENDER_ORDER;
       this.camera.add(mesh);
-      mesh.position.set(0, 0, -0.1);
+      mesh.position.set(0, 0, FLASH_Z_OFFSET);
       this.flashOverlay = mesh;
-      // Ensure the camera is part of the scene so its children render.
       if (!this.scene.getObjectById(this.camera.id)) {
         this.scene.add(this.camera);
       }
@@ -513,8 +663,7 @@ export class SolarSystemScene {
     if (!this.flashOverlay || this.flashFramesLeft <= 0) return;
     this.flashFramesLeft--;
     const mat = this.flashOverlay.material as THREE.MeshBasicMaterial;
-    // Fade out linearly over the remaining frames.
-    mat.opacity = 0.35 * (this.flashFramesLeft / 30);
+    mat.opacity = FLASH_OPACITY * (this.flashFramesLeft / FLASH_FRAMES);
     if (this.flashFramesLeft === 0) {
       this.flashOverlay.visible = false;
     }
@@ -536,9 +685,8 @@ export class SolarSystemScene {
 
   private tickFlyTo(): void {
     if (!this.flyTarget || this.flyFramesLeft <= 0) return;
-    // Ease-in: start slow, accelerate toward target.
     const progress = 1 - this.flyFramesLeft / FLY_TO_FRAMES;
-    const alpha = 0.02 + progress * 0.08;
+    const alpha = FLY_TO_ALPHA_START + progress * FLY_TO_ALPHA_RANGE;
     this.camera.position.lerp(this.flyTarget, alpha);
     if (this.flyControlsTarget) {
       this.controls.target.lerp(this.flyControlsTarget, alpha);
@@ -648,6 +796,8 @@ export class SolarSystemScene {
         alphaAttr.needsUpdate = true;
       }
     }
+
+    this.updateTrajectoryArcs(this._displayNeos);
   }
 
   highlightNeos(ids: Set<bigint> | null): void {
@@ -762,13 +912,18 @@ export class SolarSystemScene {
       this.planetGroup.visible = visible;
       return;
     }
+    if (layer === "meteors") {
+      this.meteorGroup.visible = visible;
+      return;
+    }
+    if (layer === "trajectories") {
+      this.trajectoryGroup.visible = visible;
+      return;
+    }
     if (layer === "hazardOnly") {
       this.hazardOnlyActive = visible;
       this.updateNeoPoints(this._currentNeos);
       return;
-    }
-    for (const obj of this.layers[layer]) {
-      obj.visible = visible;
     }
   }
 
@@ -816,6 +971,24 @@ export class SolarSystemScene {
 
     this.scene.remove(this.planetGroup);
     this.disposeNeoPoints();
+
+    // Dispose meteor cones
+    for (const child of this.meteorGroup.children) {
+      const mesh = child as THREE.Mesh;
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    }
+    this.meteorGroup.clear();
+    this.scene.remove(this.meteorGroup);
+
+    // Dispose trajectory arcs
+    for (const child of this.trajectoryGroup.children) {
+      const ls = child as THREE.LineSegments;
+      ls.geometry.dispose();
+      (ls.material as THREE.Material).dispose();
+    }
+    this.trajectoryGroup.clear();
+    this.scene.remove(this.trajectoryGroup);
 
     this.renderer.dispose();
     this.renderer.domElement.remove();

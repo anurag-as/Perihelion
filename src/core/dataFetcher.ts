@@ -2,6 +2,7 @@ import type { MeteorShower, NeoData } from "./types";
 import { radiantToXYZ } from "./coordinateConverter";
 import {
   CACHE_TTL_MS,
+  FETCH_TIMEOUT_MS,
   JPL_CAD_DEV_PROXY,
   JPL_CAD_DIST_MAX,
   JPL_CAD_PROD_BASE,
@@ -84,7 +85,7 @@ function daysBetween(a: Date, b: Date): number {
 
 async function safeFetch(url: string): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch(url, { signal: controller.signal });

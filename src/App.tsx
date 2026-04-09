@@ -6,20 +6,20 @@ import ProximitySlider, {
   PROXIMITY_MAX_AU,
 } from "./components/ProximitySlider";
 import InfoPanel from "./components/InfoPanel";
-import NeoLegend, {
+import SceneControls, {
   ALL_CATEGORIES,
   neoCategory,
   type NeoCategory,
-} from "./components/NeoLegend";
+} from "./components/SceneControls";
 import SearchBar from "./components/SearchBar";
 import StatsPanel from "./components/StatsPanel";
 import TimeScrubber from "./components/TimeScrubber";
-import LayerControls from "./components/LayerControls";
 import {
   loadSnapshot,
   parseNeows,
   fetchNeows,
   fetchCad,
+  NasaDataFetcher,
   type FetchStatus,
 } from "./core/dataFetcher";
 import { neoPosition, earthPositionAU } from "./core/coordinateConverter";
@@ -342,6 +342,9 @@ export default function App() {
       scene.updateNeoPoints(neos);
       scene.updatePlanetPositions(new Date());
 
+      const fetcher = new NasaDataFetcher();
+      scene.updateMeteorShowers(fetcher.loadMeteorShowers());
+
       try {
         await index.init();
         if (cancelled) return;
@@ -397,9 +400,11 @@ export default function App() {
         </div>
       )}
       <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-        <NeoLegend
+        <SceneControls
           activeCategories={activeCategories}
-          onToggle={onCategoryToggle}
+          onCategoryToggle={onCategoryToggle}
+          onLayerToggle={onLayerToggle}
+          onHazardFilter={onHazardFilter}
         />
         <InfoPanel neo={selectedNeo} />
       </div>
@@ -414,10 +419,6 @@ export default function App() {
           radiusAU={proximityRadius}
           matchCount={proximityCount}
           onChange={onProximityChange}
-        />
-        <LayerControls
-          onLayerToggle={onLayerToggle}
-          onHazardFilter={onHazardFilter}
         />
       </div>
       <div className="absolute bottom-4 right-4">

@@ -5,9 +5,7 @@ import {
   neoPosition,
   radiantToXYZ,
 } from "../../src/core/coordinateConverter";
-
-const J2000_MS = 946728000000;
-const KM_PER_AU = 149_597_870.7;
+import { J2000_MS, KM_PER_AU } from "../../src/core/constants";
 
 describe("CoordinateConverter", () => {
   describe("earthPositionAU", () => {

@@ -209,8 +209,63 @@ export const ORBIT_RING_PATH_SEGMENTS = 256;
 export const PLANET_SPHERE_SEGMENTS = 32;
 export const SUN_SPHERE_SEGMENTS = 32;
 
+// ---------------------------------------------------------------------------
+// Scene flash / migration animation
+// ---------------------------------------------------------------------------
+
+export const FLASH_FRAMES = 30;
+export const FLASH_OPACITY = 0.35;
+export const FLASH_COLOUR_HEX = 0x00ffcc;
+export const FLASH_Z_OFFSET = -0.1;
+export const FLASH_RENDER_ORDER = 999;
+
+// ---------------------------------------------------------------------------
+// Fly-to animation
+// ---------------------------------------------------------------------------
+
 export const FLY_TO_FRAMES = 60;
 export const FLY_TO_OFFSET_AU = 0.5;
+export const FLY_TO_ALPHA_START = 0.02;
+export const FLY_TO_ALPHA_RANGE = 0.08;
+
+// ---------------------------------------------------------------------------
+// Trajectory arcs
+// ---------------------------------------------------------------------------
+
+export const TRAJECTORY_ARC_POINTS = 180;
+export const TRAJECTORY_ARC_HALF_DAYS = 30;
+export const TRAJECTORY_ARC_OPACITY = 0.4;
+
+// ---------------------------------------------------------------------------
+// Meteor shower rendering
+// ---------------------------------------------------------------------------
+
+export const METEOR_RADIANT_DISTANCE_AU = 2.0;
+export const METEOR_MAX_ZHR = 150;
+export const METEOR_CONE_HEIGHT_MIN = 0.08;
+export const METEOR_CONE_HEIGHT_RANGE = 0.12;
+export const METEOR_CONE_RADIUS_MIN = 0.02;
+export const METEOR_CONE_RADIUS_RANGE = 0.04;
+export const METEOR_CONE_SEGMENTS = 8;
+export const METEOR_OPACITY_MIN = 0.6;
+export const METEOR_OPACITY_RANGE = 0.3;
+
+// ---------------------------------------------------------------------------
+// Asteroid atlas sprite shape
+// ---------------------------------------------------------------------------
+
+export const ASTEROID_SHAPE_POINTS = 8;
+export const ASTEROID_SHAPE_RADIUS_MIN = 0.82;
+export const ASTEROID_SHAPE_RADIUS_JITTER = 0.18;
+export const ASTEROID_SHAPE_ANGLE_JITTER = 0.25;
+export const ASTEROID_HIGHLIGHT_OFFSET = 0.25;
+
+// ---------------------------------------------------------------------------
+// Raycaster
+// ---------------------------------------------------------------------------
+
+export const RAYCASTER_POINT_THRESHOLD = 0.015;
+
 export const PULSE_SPEED = 0.003;
 export const PULSE_MIN_BRIGHTNESS = 0.6;
 export const PULSE_BRIGHTNESS_RANGE = 0.4;
@@ -231,6 +286,7 @@ export const JPL_CAD_PROD_BASE = "https://ssd-api.jpl.nasa.gov";
 export const JPL_CAD_DEV_PROXY = "/api/jpl";
 export const SNAPSHOT_PATH = "/neo_snapshot.json";
 
+export const FETCH_TIMEOUT_MS = 10_000;
 export const FETCH_LOOKAHEAD_DAYS = 30;
 export const SCRUBBER_FETCH_WINDOW_DAYS = 30;
 

@@ -1,6 +1,7 @@
 import { useRef, type ChangeEvent } from "react";
+import { MS_PER_DAY, SCRUBBER_FETCH_WINDOW_DAYS } from "../core/constants";
 
-const SCRUBBER_DAYS = 30;
+const SCRUBBER_DAYS = SCRUBBER_FETCH_WINDOW_DAYS / 2;
 
 interface TimeScrubberProps {
   date: Date;
@@ -23,12 +24,12 @@ export default function TimeScrubber({
   const today = todayRef.current;
 
   const offsetDays = Math.round(
-    (date.getTime() - today.getTime()) / 86_400_000,
+    (date.getTime() - today.getTime()) / MS_PER_DAY,
   );
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const days = parseInt(e.target.value, 10);
-    const newDate = new Date(today.getTime() + days * 86_400_000);
+    const newDate = new Date(today.getTime() + days * MS_PER_DAY);
     onChange(newDate);
   }
 

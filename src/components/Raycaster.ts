@@ -1,13 +1,12 @@
 import * as THREE from "three";
 import type { NeoData } from "../core/types";
+import { RAYCASTER_POINT_THRESHOLD } from "../core/constants";
 
 export type RaycasterHitCallback = (neo: NeoData) => void;
 export type RaycasterMissCallback = (worldPoint: THREE.Vector3) => void;
 
 export class NeoRaycaster {
   private raycaster = new THREE.Raycaster();
-  // Larger threshold makes individual NEO points much easier to click/hover.
-  private static readonly POINT_THRESHOLD = 0.015;
   private camera: THREE.PerspectiveCamera | null = null;
   private neoPoints: THREE.Points | null = null;
   private neos: NeoData[] = [];
@@ -30,7 +29,7 @@ export class NeoRaycaster {
 
   private toNdc(event: MouseEvent, container: HTMLElement): THREE.Vector2 {
     const rect = container.getBoundingClientRect();
-    this.raycaster.params.Points!.threshold = NeoRaycaster.POINT_THRESHOLD;
+    this.raycaster.params.Points!.threshold = RAYCASTER_POINT_THRESHOLD;
     return new THREE.Vector2(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
       -((event.clientY - rect.top) / rect.height) * 2 + 1,
