@@ -2,6 +2,8 @@
 
 A browser-based 3D visualiser for asteroids, comets, and meteor shower radiants. Fetches live data from NASA's NeoWs and JPL Close Approach APIs, indexes objects spatially using [Bonsai](https://github.com/anurag-as/bonsai) compiled to WASM, and renders an interactive solar system scene with Three.js — entirely client-side, no server required.
 
+***Check out the [blog](https://medium.com/@sampathanurag3/perihelion-visualising-near-earth-asteroids-with-a-rust-spatial-index-that-thinks-for-itself-38ea1fe1c350) and play around [Perihelion](https://anurag-as.github.io/Perihelion/).***
+
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) 18+
