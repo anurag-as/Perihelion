@@ -304,7 +304,7 @@ export const SNAPSHOT_PATH = `${import.meta.env.BASE_URL}neo_snapshot.json`;
 
 export const FETCH_TIMEOUT_MS = 30_000;
 export const FETCH_LOOKAHEAD_DAYS = 7;
-export const SCRUBBER_FETCH_WINDOW_DAYS = 7;
+export const SCRUBBER_FETCH_WINDOW_DAYS = 14;
 
 // ---------------------------------------------------------------------------
 // InfoPanel

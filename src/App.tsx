@@ -402,6 +402,7 @@ export default function App() {
       scene.updateNeoPoints(neos);
       scene.updatePlanetPositions(new Date());
       lastNeosRef.current = neos;
+      initialLoadDoneRef.current = true;
 
       const fetcher = new NasaDataFetcher();
       scene.updateMeteorShowers(fetcher.loadMeteorShowers());
