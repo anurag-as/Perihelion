@@ -6537,7 +6537,7 @@ Error generating stack: ` + o.message + `
     4281172,
     4543055,
     4801601
-  ], af = 0.05, cf = 0.1, zh = 12, Dh = 0.05, ff = 0.01, Fh = 2, jh = 3e-3, Uh = 2e-3, $h = 0.35, Hh = 3359829, Bh = 8, Gh = 256, zu = 32, Du = 32, Fu = 30, To = 0.35, Vh = 65484, Wh = -0.1, Qh = 999, ju = 60, Kh = 0.5, Xh = 0.02, Yh = 0.08, Po = 180, Uu = 30, Zh = 0.4, Ao = 2, Jh = 150, qh = 0.08, bh = 0.12, em = 0.02, tm = 0.04, nm = 8, rm = 0.6, lm = 0.3, pt = 8, om = 0.82, im = 0.18, sm = 0.25, $u = 0.25, um = 0.015, am = 20, cm = 800, fm = 3e-3, dm = 3e-3, pm = 0.6, hm = 0.4, Wn = 32, mm = 3, ym = "#FF4422", gm = 36e5, vm = 0.2, df = "https://orange-waterfall-4401.sampathanurag3.workers.dev", wm = `${df}/neo/rest/v1/feed`, xm = df, Sm = "/Perihelion/neo_snapshot.json", _m = 3e4, Em = 7, pf = 7, km = "https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=", hf = 2e3, Hu = 1e6, mf = 80, Nm = "https://github.com/anurag-as/Bonsai", Cm = 3e3, Bu = {
+  ], af = 0.05, cf = 0.1, zh = 12, Dh = 0.05, ff = 0.01, Fh = 2, jh = 3e-3, Uh = 2e-3, $h = 0.35, Hh = 3359829, Bh = 8, Gh = 256, zu = 32, Du = 32, Fu = 30, To = 0.35, Vh = 65484, Wh = -0.1, Qh = 999, ju = 60, Kh = 0.5, Xh = 0.02, Yh = 0.08, Po = 180, Uu = 30, Zh = 0.4, Ao = 2, Jh = 150, qh = 0.08, bh = 0.12, em = 0.02, tm = 0.04, nm = 8, rm = 0.6, lm = 0.3, pt = 8, om = 0.82, im = 0.18, sm = 0.25, $u = 0.25, um = 0.015, am = 20, cm = 800, fm = 3e-3, dm = 3e-3, pm = 0.6, hm = 0.4, Wn = 32, mm = 3, ym = "#FF4422", gm = 36e5, vm = 0.2, df = "https://orange-waterfall-4401.sampathanurag3.workers.dev", wm = `${df}/neo/rest/v1/feed`, xm = df, Sm = "/Perihelion/neo_snapshot.json", _m = 3e4, Em = 7, pf = 14, km = "https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=", hf = 2e3, Hu = 1e6, mf = 80, Nm = "https://github.com/anurag-as/Bonsai", Cm = 3e3, Bu = {
     0: "R-tree",
     1: "KD-tree",
     2: "Quadtree",
@@ -8380,7 +8380,7 @@ index.knnQuery([${t.toFixed(6)}, ${n.toFixed(6)}, ${r.toFixed(6)}], 1);`;
           }
         }
         if (ye) return;
-        P.updateNeoPoints(ft), P.updatePlanetPositions(/* @__PURE__ */ new Date()), n.current = ft;
+        P.updateNeoPoints(ft), P.updatePlanetPositions(/* @__PURE__ */ new Date()), n.current = ft, s.current = true;
         const Zl = new l0();
         P.updateMeteorShowers(Zl.loadMeteorShowers());
         try {
